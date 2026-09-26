@@ -84,7 +84,7 @@
         </div>
       </header>
       <main class="content">
-        <router-view />
+        <router-view :key="session.posProfile" />
         <!-- The open-register prompt only blocks the Sell screen; the nav
              rail and other tabs (Register, History, Settings) stay usable. -->
         <OpenRegisterOverlay v-if="!session.registerOpen && route.path === '/'" />
