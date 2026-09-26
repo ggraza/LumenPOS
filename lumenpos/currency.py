@@ -373,7 +373,14 @@ def check_change(invoice):
     other when it books the change, which for a POS Invoice is at the shift
     close, hours later. So such a sale is refused here, with the reason."""
     account = invoice.get("account_for_change_amount")
-    if not flt(invoice.get("change_amount")) or not account:
+    # A POS Invoice gets its change_amount only at submit: work it out the way
+    # ERPNext will (validate_change_amount).
+    change = flt(invoice.get("change_amount")) or (
+        flt(invoice.get("paid_amount"))
+        - (flt(invoice.get("rounded_total")) or flt(invoice.get("grand_total")))
+        + flt(invoice.get("write_off_amount"))
+    )
+    if change <= 0.005 or not account:
         return
     account_currency = frappe.get_cached_value("Account", account, "account_currency")
     ccy = company_currency(invoice.company)
