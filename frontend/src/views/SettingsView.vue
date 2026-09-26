@@ -3766,7 +3766,7 @@ const filteredBooks = computed(() => {
 .cf-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
 .cf-table { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .ic-wrap { overflow-x: auto; }
-.cur-pick { flex: 0 0 200px; }
+.cur-pick { flex: 0 0 170px; }
 .rate-src { max-width: 170px; }
 .margin-in input { width: 72px; }
 .auto-status { display: flex; flex-direction: column; gap: 2px; margin: -2px 0 10px; }
