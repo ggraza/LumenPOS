@@ -1273,7 +1273,8 @@
           <p class="muted small" style="margin: 0 0 8px">
             {{ t('Each currency gets, on saving, a walk-in customer billed in it, a receivable account and a cash drawer ("Cash USD") on every outlet. Change is always given in the local currency, from the main drawer.') }}
           </p>
-          <div v-for="(row, i) in generalForm.sale_currencies" :key="'cur' + i" class="cf-row">
+          <template v-for="(row, i) in generalForm.sale_currencies" :key="'cur' + i">
+          <div class="cf-row">
             <LinkPicker doctype="Currency" v-model="row.currency" :placeholder="t('Currency, e.g. USD')" />
             <label class="inline-check">
               <input type="checkbox" v-model="row.show_equivalent" :true-value="1" :false-value="0" />
@@ -1302,6 +1303,7 @@
               </template>
             </span>
           </div>
+          </template>
           <button class="btn btn-outline add-row" @click="generalForm.sale_currencies.push({ currency: '', show_equivalent: 1 })">
             <Icon name="plus" /> {{ t('Add a currency') }}
           </button>
