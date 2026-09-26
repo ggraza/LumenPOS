@@ -37,7 +37,14 @@ export const useCatalogStore = defineStore('catalog', {
       }
       if (this.cachedCount > 0) {
         const items = await searchCatalog(this.search, this.itemGroup)
-        if (requestId === this._requestId) this.items = items
+        // The newest request clears "Loading…" here too: a cold start's server
+        // request that lost the race to the full catalog download (which then
+        // searched the device) never cleared it, and the grid stayed on
+        // "Loading…" with the products already there.
+        if (requestId === this._requestId) {
+          this.items = items
+          this.loading = false
+        }
         return
       }
 
