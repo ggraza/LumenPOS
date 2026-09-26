@@ -211,11 +211,21 @@ def get_settings():
         "enable_multi_currency": 1 if doc.get("enable_multi_currency") else 0,
         # Customer balances across the companies of a group (lumenpos.inter_company).
         "balances_across_companies": doc.get("balances_across_companies") or "Shared by the group",
+        # Automatic exchange rates (lumenpos.currency) and the credit their
+        # source asks for wherever they are shown.
+        "auto_rates_enabled": 1 if doc.get("auto_rates_enabled") else 0,
+        "rates_credit": _rates_credit(),
         "sale_currencies": _sale_currencies(doc),
         # The new-customer form (lumenpos.customer_form): every field, built-in
         # ones first, with its state for individuals and for companies.
         "customer_form_fields": _customer_form_fields(),
     }
+
+
+def _rates_credit():
+    from lumenpos import currency
+
+    return currency.RATES_CREDIT
 
 
 def _customer_form_fields():
@@ -253,6 +263,10 @@ def _sale_currencies(doc):
             "rates": rates.get(row.currency, []),
             # Why the last setup of this currency failed, if it did.
             "setup_error": problems.get(row.currency) or "",
+            # Fixed (the shop sets the rate) or Automatic (updated daily).
+            "rate_source": row.get("rate_source") or "Fixed",
+            "rate_margin": flt(row.get("rate_margin")),
+            "auto_status": currency.auto_status(row),
         }
         for row in (doc.get("sale_currencies") or [])
     ]
@@ -473,6 +487,8 @@ def save_settings(payload):
         doc.balances_across_companies = payload["balances_across_companies"]
     if "enable_multi_currency" in payload:
         doc.enable_multi_currency = 1 if payload.get("enable_multi_currency") else 0
+    if "auto_rates_enabled" in payload:
+        doc.auto_rates_enabled = 1 if payload.get("auto_rates_enabled") else 0
     if "sale_currencies" in payload:
         kept = {r.currency: r for r in (doc.get("sale_currencies") or [])}
         doc.sale_currencies = []
@@ -483,6 +499,9 @@ def save_settings(payload):
                 continue
             seen.add(code)
             old = kept.get(code)
+            margin = flt(row.get("rate_margin"))
+            if margin < 0 or margin >= 100:
+                frappe.throw(_("The margin for {0} must be from 0 to less than 100%.").format(code))
             doc.append(
                 "sale_currencies",
                 {
@@ -490,6 +509,10 @@ def save_settings(payload):
                     "walk_in_customer": (old.walk_in_customer if old else None) or row.get("walk_in_customer") or None,
                     "cash_mode": (old.cash_mode if old else None) or row.get("cash_mode") or None,
                     "show_equivalent": 1 if row.get("show_equivalent") else 0,
+                    "rate_source": "Automatic" if row.get("rate_source") == "Automatic" else "Fixed",
+                    "rate_margin": margin,
+                    # What the daily update did stays with the currency.
+                    "auto_status": old.get("auto_status") if old else None,
                 },
             )
             frappe.db.set_value("Currency", code, "enabled", 1)
@@ -522,6 +545,12 @@ def save_settings(payload):
         from lumenpos import currency
 
         currency.ensure_setup()
+        # A currency just switched to Automatic gets today's rate at once (a
+        # rate typed for today stays). A failure shows under the currency.
+        try:
+            currency.refresh_auto_rates()
+        except Exception:
+            frappe.log_error(title="LumenPOS: exchange rates update failed", message=frappe.get_traceback())
     from lumenpos.api import audit
 
     audit.log(audit.SETTINGS_CHANGE, detail="LumenPOS Settings updated")

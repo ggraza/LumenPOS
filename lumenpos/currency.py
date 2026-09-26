@@ -33,6 +33,8 @@ before any of this was written):
   another currency takes money in and never pays change out.
 """
 
+import json
+
 import frappe
 from frappe import _
 from frappe.utils import cint, flt, now_datetime, nowdate
@@ -680,3 +682,160 @@ def set_rate(currency, company_currency, rate):
             }
         ).insert(ignore_permissions=True)
     return {"currency": currency, "company_currency": company_currency, "rate": rate}
+
+
+# ---------------------------------------------------------------------------
+# Automatic rates (LumenPOS Settings, Other currencies)
+# ---------------------------------------------------------------------------
+# A currency is Fixed (the shop sets its rate, as before) or Automatic: once a
+# day the published rate, less the shop's margin, is saved as ERPNext's own
+# Currency Exchange, exactly what a person typing it would make, so the till,
+# the shift's fixed rate and ERPNext all keep working unchanged. A rate typed
+# for the day always wins. Volatile currencies are why the margin exists: a
+# shop in Zimbabwe sold at 35 ZWG to the dollar while the published rate was
+# 26.6, and would have lost a quarter of every sale on the published one.
+
+RATES_URL = "https://open.er-api.com/v6/latest/{base}"
+# ExchangeRate-API's free open access (no key, refreshed once a day,
+# commercial use allowed) asks for this credit wherever its rates are shown.
+RATES_CREDIT = {"text": "Rates By Exchange Rate API", "url": "https://www.exchangerate-api.com"}
+
+
+def auto_rates_on():
+    try:
+        return enabled() and bool(cint(frappe.db.get_single_value(SETTINGS, "auto_rates_enabled")))
+    except Exception:
+        return False  # a site that has not migrated yet
+
+
+def fetch_published(base):
+    """{currency: units of it per 1 `base`}, today's published rates."""
+    import requests
+
+    response = requests.get(RATES_URL.format(base=base), timeout=20)
+    response.raise_for_status()
+    data = response.json()
+    if data.get("result") != "success" or not data.get("rates"):
+        frappe.throw(_("The rates service answered: {0}").format(data.get("error-type") or data.get("result")))
+    return data["rates"]
+
+
+def auto_status(row):
+    """What the daily update last did for this currency, per company currency:
+    published, used, wrote (what it saved, None when a typed rate won), date,
+    at, error."""
+    try:
+        return json.loads(row.get("auto_status") or "{}") or {}
+    except Exception:
+        return {}
+
+
+def _write_rate(currency, base, rate, today, last, force):
+    """Today's selling Currency Exchange: written when there is none, when it
+    still holds what the update wrote earlier today, or when forced (Update
+    now). Otherwise someone typed it today and it stays. Returns (rate in
+    force, what was written or None)."""
+    filters = {"from_currency": currency, "to_currency": base, "date": today, "for_selling": 1}
+    found = frappe.db.get_value("Currency Exchange", filters, ["name", "exchange_rate"])
+    name, current = found if found else (None, None)
+    ours = (
+        last.get("date") == today
+        and last.get("wrote") is not None
+        and flt(last.get("wrote"), 9) == flt(current, 9)
+    )
+    if name and not (force or ours):
+        return flt(current, 9), None
+    if name:
+        frappe.db.set_value("Currency Exchange", name, "exchange_rate", rate)
+    else:
+        frappe.get_doc(
+            {
+                "doctype": "Currency Exchange",
+                "from_currency": currency,
+                "to_currency": base,
+                "date": today,
+                "exchange_rate": rate,
+                "for_selling": 1,
+                "for_buying": 0,
+            }
+        ).insert(ignore_permissions=True)
+    return rate, rate
+
+
+def refresh_auto_rates(fetch=None, force=False, commit=False):
+    """Today's rate of every Automatic currency, to each company currency with
+    a till. A failed fetch keeps the last rate (ERPNext uses the latest one on
+    record) and the reason is kept for the Settings screen. Returns
+    {currency: {company currency: status}}."""
+    if not auto_rates_on():
+        return {}
+    doc = frappe.get_single(SETTINGS)
+    rows = [r for r in doc.get("sale_currencies") or [] if r.currency and r.get("rate_source") == "Automatic"]
+    if not rows:
+        return {}
+    fetch = fetch or fetch_published
+    today = nowdate()
+    stamp = str(now_datetime())[:16]
+    out = {}
+    for base in sorted({company_currency(c) for c in _companies()}):
+        problem = None
+        try:
+            table = fetch(base) or {}
+        except Exception as exc:
+            table, problem = {}, (frappe.utils.strip_html(str(exc)).strip() or type(exc).__name__)[:300]
+            frappe.log_error(title="LumenPOS: exchange rates update failed", message=frappe.get_traceback())
+        for row in rows:
+            if row.currency == base:
+                continue
+            status = auto_status(row)
+            last = dict(status.get(base) or {})
+            per_base = flt(table.get(row.currency))
+            margin = flt(row.get("rate_margin"))
+            if problem or per_base <= 0:
+                last.update(
+                    {
+                        "error": problem or _("The rates service has no rate for {0}.").format(row.currency),
+                        "tried": stamp,
+                    }
+                )
+            else:
+                published = flt(1 / per_base, 9)
+                used, wrote = _write_rate(
+                    row.currency, base, flt(published * (1 - margin / 100), 9), today, last, force
+                )
+                last = {
+                    "published": published,
+                    "used": used,
+                    "wrote": wrote,
+                    "margin": margin,
+                    "date": today,
+                    "at": stamp,
+                    "error": None,
+                }
+            status[base] = last
+            row.auto_status = json.dumps(status)
+            out.setdefault(row.currency, {})[base] = last
+    doc.flags.ignore_permissions = True
+    doc.save()
+    if commit:
+        frappe.db.commit()  # nosemgrep
+    return out
+
+
+def daily_rates():
+    """Scheduler (00:15): the day's automatic rates."""
+    try:
+        refresh_auto_rates(commit=True)
+    except Exception:
+        frappe.db.rollback()
+        frappe.log_error(title="LumenPOS: exchange rates update failed", message=frappe.get_traceback())
+
+
+@frappe.whitelist()
+def update_rates_now():
+    """Settings, Update now: today's automatic rates at once, replacing today's
+    rate of every Automatic currency."""
+    _require_settings()
+    if not auto_rates_on():
+        frappe.throw(_("Switch on automatic exchange rates first, and save."))
+    return {"result": refresh_auto_rates(force=True), "rates": rates()}

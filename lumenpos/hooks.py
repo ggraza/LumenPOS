@@ -43,6 +43,11 @@ scheduler_events = {
         "45 0 * * *": [
             "lumenpos.inter_company.nightly",
         ],
+        # Other currencies set to Automatic: the day's published rate, less the
+        # shop's margin, saved as ERPNext Currency Exchange.
+        "15 0 * * *": [
+            "lumenpos.currency.daily_rates",
+        ],
     },
 }
 

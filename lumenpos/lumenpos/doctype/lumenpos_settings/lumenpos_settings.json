@@ -54,6 +54,7 @@
   "delivery_apps",
   "currency_section",
   "enable_multi_currency",
+  "auto_rates_enabled",
   "sale_currencies",
   "customer_form_section",
   "customer_form_fields",
@@ -358,6 +359,14 @@
    "default": "0",
    "label": "Sell in other currencies",
    "description": "A customer billed in another currency (Customer, Currency and Price List) buys in it: prices, payment and receipt in that currency, at a rate fixed for the shift. Off: such a customer is refused."
+  },
+  {
+   "fieldname": "auto_rates_enabled",
+   "fieldtype": "Check",
+   "default": "0",
+   "label": "Update exchange rates automatically",
+   "depends_on": "enable_multi_currency",
+   "description": "Once a day, from ExchangeRate-API (free), for the currencies set to Automatic. A rate typed for the day always wins."
   },
   {
    "fieldname": "sale_currencies",
@@ -780,7 +789,7 @@
  "index_web_pages_for_search": 0,
  "issingle": 1,
  "links": [],
- "modified": "2026-09-26 21:00:00.000000",
+ "modified": "2026-09-26 22:00:00.000000",
  "modified_by": "Administrator",
  "module": "LumenPOS",
  "name": "LumenPOS Settings",

@@ -1260,6 +1260,13 @@
               <span class="setting-desc">{{ t('Off: a customer billed in another currency is refused at the till, with the reason.') }}</span>
             </span>
           </label>
+          <label v-if="generalForm.enable_multi_currency" class="setting-row">
+            <input type="checkbox" class="setting-toggle" v-model="generalForm.auto_rates_enabled" :true-value="1" :false-value="0" />
+            <span class="setting-text">
+              <span class="setting-title">{{ t('Update exchange rates automatically') }}</span>
+              <span class="setting-desc">{{ t('Once a day, from ExchangeRate-API (free), for the currencies set to Automatic below. The others keep the rate you set. A rate you type for today always wins.') }}</span>
+            </span>
+          </label>
         </div>
         <template v-if="generalForm.enable_multi_currency">
           <div class="sub-label">{{ t('Currencies the till sells in') }}</div>
@@ -1275,7 +1282,25 @@
             <span v-if="row.walk_in_customer" class="muted small">{{ row.walk_in_customer }} · {{ row.cash_mode }}</span>
             <span v-else-if="!row.setup_error" class="muted small">{{ t('Set up when you save') }}</span>
             <span v-if="row.setup_error" class="neg small">{{ t('Could not set up: {reason}', { reason: row.setup_error }) }}</span>
+            <select v-if="generalForm.auto_rates_enabled" v-model="row.rate_source" class="cf-in rate-src">
+              <option value="Fixed">{{ t('Fixed rate') }}</option>
+              <option value="Automatic">{{ t('Automatic rate') }}</option>
+            </select>
+            <label v-if="generalForm.auto_rates_enabled && row.rate_source === 'Automatic'" class="inline-check margin-in" :title="t('The till values this currency this much below the published rate.')">
+              {{ t('Margin') }}
+              <input class="cf-in" type="number" min="0" max="99" step="0.1" v-model.number="row.rate_margin" />
+              %
+            </label>
             <button class="btn-ghost" @click="generalForm.sale_currencies.splice(i, 1)"><Icon name="close" /></button>
+          </div>
+          <div v-if="generalForm.auto_rates_enabled && row.rate_source === 'Automatic' && row.currency" class="auto-status">
+            <span v-if="!Object.keys(row.auto_status || {}).length" class="muted small">{{ t('Not updated yet: save, or press Update now.') }}</span>
+            <span v-for="(st, base) in row.auto_status || {}" :key="base" :class="st.error ? 'neg small' : 'muted small'">
+              <template v-if="st.error">{{ t('Last update failed: {reason}. The till keeps the last rate.', { reason: st.error }) }}</template>
+              <template v-else>
+                {{ t('Published {published}, in force {used}, updated {at}', { published: rateBoth(row.currency, base, st.published), used: rateBoth(row.currency, base, st.used), at: st.at }) }}<span v-if="st.wrote == null">&nbsp;· {{ t('a rate typed for today is in force') }}</span>
+              </template>
+            </span>
           </div>
           <button class="btn btn-outline add-row" @click="generalForm.sale_currencies.push({ currency: '', show_equivalent: 1 })">
             <Icon name="plus" /> {{ t('Add a currency') }}
@@ -1286,12 +1311,22 @@
             {{ t('The selling rate from today on, kept in ERPNext (Currency Exchange). A shift keeps the rate it started selling at; the next shift takes the new one.') }}
           </p>
           <div v-if="!rateRows.length" class="muted small">{{ t('Save the currencies first, then set their rates here.') }}</div>
+          <p v-if="settingsInfo.auto_rates_enabled && rateRows.some((r) => r.auto)" class="muted small" style="margin: 0 0 8px">
+            {{ t('For a currency set to Automatic, a rate you save here counts for today only.') }}
+          </p>
           <div v-for="r in rateRows" :key="r.currency + r.company_currency" class="cf-row">
             <span class="rate-label">{{ isolate(`1 ${r.currency} =`) }}</span>
             <input class="cf-in rate-in" type="text" inputmode="decimal" v-model="r.draft" />
             <span>{{ r.company_currency }}</span>
+            <span v-if="r.auto" class="pill-auto small">{{ t('Automatic') }}</span>
             <span v-if="!r.rate" class="neg small">{{ t('No rate yet: the till cannot sell in it') }}</span>
             <button class="btn btn-outline" :disabled="r.busy" @click="saveRate(r)">{{ t('Save rate') }}</button>
+          </div>
+          <div v-if="settingsInfo.auto_rates_enabled" class="auto-actions">
+            <button class="btn btn-outline" :disabled="ratesBusy" :title="t('Uses the saved settings.')" @click="updateRatesNow">
+              {{ ratesBusy ? t('Updating…') : t('Update now') }}
+            </button>
+            <a v-if="settingsInfo.rates_credit" :href="settingsInfo.rates_credit.url" target="_blank" rel="noopener" class="muted small">{{ settingsInfo.rates_credit.text }}</a>
           </div>
         </template>
       </div>
@@ -2121,7 +2156,7 @@ import Icon from '../components/Icon.vue'
 import OfflineLogModal from '../components/OfflineLogModal.vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { call } from '../api'
-import { money, shortTime, parseMoney, isolate } from '../format'
+import { money, shortTime, parseMoney, isolate, rateText } from '../format'
 import { useSessionStore } from '../stores/session'
 import { useCatalogStore } from '../stores/catalog'
 import { catalogCount, storagePersisted, customerCount } from '../offline'
@@ -2246,6 +2281,7 @@ const generalForm = ref({
   exchange_role: '',
   enable_layaway: 0,
   enable_multi_currency: 0,
+  auto_rates_enabled: 0,
   sale_currencies: [],
   customer_form_fields: [],
   balances_across_companies: 'Shared by the group',
@@ -2383,6 +2419,19 @@ function addCustomerField() {
 }
 
 // ---- other currencies: today's selling rate of each, per company currency ----
+// The currency rows as the form edits them.
+function currencyRows(info) {
+  return (info.sale_currencies || []).map((r) => ({
+    setup_error: r.setup_error || '',
+    currency: r.currency,
+    show_equivalent: r.show_equivalent ? 1 : 0,
+    walk_in_customer: r.walk_in_customer || '',
+    cash_mode: r.cash_mode || '',
+    rate_source: r.rate_source || 'Fixed',
+    rate_margin: r.rate_margin || 0,
+    auto_status: r.auto_status || {},
+  }))
+}
 const rateRows = ref([])
 function loadRateRows(info) {
   rateRows.value = (info.sale_currencies || []).flatMap((row) =>
@@ -2392,8 +2441,33 @@ function loadRateRows(info) {
       rate: r.rate || 0,
       draft: r.rate ? String(r.rate) : '',
       busy: false,
+      auto: Boolean(info.auto_rates_enabled && row.rate_source === 'Automatic'),
     }))
   )
+}
+// "1 ZWG = 0.037551 USD", and the other way round when the number is small:
+// "1 USD = 26.63 ZWG" is how a shop reads a weak currency.
+function rateBoth(code, base, rate) {
+  if (!rate) return ''
+  const line = `1 ${code} = ${rateText(rate)} ${base}`
+  return isolate(rate < 1 ? `${line} (1 ${base} = ${rateText(1 / rate)} ${code})` : line)
+}
+const ratesBusy = ref(false)
+async function updateRatesNow() {
+  ratesBusy.value = true
+  try {
+    await call('lumenpos.currency.update_rates_now')
+    const info = await call('lumenpos.api.settings.get_settings')
+    settingsInfo.value = info
+    generalForm.value.sale_currencies = currencyRows(info)
+    loadRateRows(info)
+    const failed = (info.sale_currencies || []).some((r) => Object.values(r.auto_status || {}).some((s) => s.error))
+    session.notify(failed ? t('Some rates could not be updated, the reason is under each currency.') : t('Exchange rates updated'), failed)
+  } catch (e) {
+    session.notify(e.message, true)
+  } finally {
+    ratesBusy.value = false
+  }
 }
 
 async function saveRate(row) {
@@ -2772,13 +2846,8 @@ async function load() {
     exchange_role: info.exchange_role || '',
     enable_layaway: info.enable_layaway ? 1 : 0,
     enable_multi_currency: info.enable_multi_currency ? 1 : 0,
-    sale_currencies: (info.sale_currencies || []).map((r) => ({
-      setup_error: r.setup_error || '',
-      currency: r.currency,
-      show_equivalent: r.show_equivalent ? 1 : 0,
-      walk_in_customer: r.walk_in_customer || '',
-      cash_mode: r.cash_mode || '',
-    })),
+    auto_rates_enabled: info.auto_rates_enabled ? 1 : 0,
+    sale_currencies: currencyRows(info),
     customer_form_fields: (info.customer_form_fields || []).map((r) => ({ ...r })),
     balances_across_companies: info.balances_across_companies || 'Shared by the group',
     layaway_reserve_stock: info.layaway_reserve_stock ? 1 : 0,
@@ -3589,13 +3658,7 @@ async function saveGeneral() {
     for (const r of info.sale_currencies || []) {
       if (r.setup_error) session.notify(t('{code} could not be set up: {reason}', { code: r.currency, reason: r.setup_error }), true)
     }
-    generalForm.value.sale_currencies = (info.sale_currencies || []).map((r) => ({
-      setup_error: r.setup_error || '',
-      currency: r.currency,
-      show_equivalent: r.show_equivalent ? 1 : 0,
-      walk_in_customer: r.walk_in_customer || '',
-      cash_mode: r.cash_mode || '',
-    }))
+    generalForm.value.sale_currencies = currencyRows(info)
     loadRateRows(info)
     generalForm.value.customer_form_fields = (info.customer_form_fields || []).map((r) => ({ ...r }))
     // The till picks up the new rules (currencies, the customer form) at once.
@@ -3701,6 +3764,11 @@ const filteredBooks = computed(() => {
 .cf-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
 .cf-table { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .ic-wrap { overflow-x: auto; }
+.rate-src { max-width: 170px; }
+.margin-in input { width: 72px; }
+.auto-status { display: flex; flex-direction: column; gap: 2px; margin: -2px 0 10px; }
+.pill-auto { border: 1px solid var(--border); background: var(--surface-2); border-radius: 999px; padding: 2px 8px; }
+.auto-actions { display: flex; gap: 14px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
 .ic-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .neg { color: var(--red); }
 .ic-table th, .ic-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: start; }
