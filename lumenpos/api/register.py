@@ -121,9 +121,15 @@ def _foreign_floats(session_doc):
 
 
 def _clean_floats(pos_profile, floats):
-    """{mode: amount} for this outlet's drawers in another currency only."""
+    """{mode: amount} for this outlet's drawers in another currency only, and
+    none while selling in other currencies is off: the drawers stay on the
+    outlet after the switch, but a new shift has no use for them."""
+    from lumenpos import currency
+
     if isinstance(floats, str):
         floats = json.loads(floats or "{}")
+    if not currency.enabled():
+        return {}
     foreign = _foreign_drawers(pos_profile)
     return {mode: flt(amount) for mode, amount in (floats or {}).items() if mode in foreign and flt(amount) > 0}
 

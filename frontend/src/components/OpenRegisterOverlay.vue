@@ -162,10 +162,14 @@ const pending = ref(session.pendingClosing)
 let poll = null
 
 // Cash drawers in another currency ("Cash USD"): each counts its own money.
+// None while selling in other currencies is off, though the drawers stay on
+// the outlet (the server ignores such a float too).
 const foreignDrawers = computed(() =>
-  (session.paymentModes || []).filter(
-    (m) => m.type === 'Cash' && m.account_currency && m.account_currency !== session.localCurrency
-  )
+  session.multiCurrency?.enabled
+    ? (session.paymentModes || []).filter(
+        (m) => m.type === 'Cash' && m.account_currency && m.account_currency !== session.localCurrency
+      )
+    : []
 )
 const floats = ref({})
 
