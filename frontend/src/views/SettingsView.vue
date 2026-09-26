@@ -1275,7 +1275,7 @@
           </p>
           <template v-for="(row, i) in generalForm.sale_currencies" :key="'cur' + i">
           <div class="cf-row">
-            <LinkPicker doctype="Currency" v-model="row.currency" :placeholder="t('Currency, e.g. USD')" />
+            <LinkPicker class="cur-pick" doctype="Currency" v-model="row.currency" :placeholder="t('Currency, e.g. USD')" />
             <label class="inline-check">
               <input type="checkbox" v-model="row.show_equivalent" :true-value="1" :false-value="0" />
               {{ t('Show the equivalent at the till') }}
@@ -1299,7 +1299,7 @@
             <span v-for="(st, base) in row.auto_status || {}" :key="base" :class="st.error ? 'neg small' : 'muted small'">
               <template v-if="st.error">{{ t('Last update failed: {reason}. The till keeps the last rate.', { reason: st.error }) }}</template>
               <template v-else>
-                {{ t('Published {published}, in force {used}, updated {at}', { published: rateBoth(row.currency, base, st.published), used: rateBoth(row.currency, base, st.used), at: st.at }) }}<span v-if="st.wrote == null">&nbsp;· {{ t('a rate typed for today is in force') }}</span>
+                {{ t('Published {published}, in force {used}, updated {at}', { published: rateBoth(row.currency, base, st.published), used: rateBoth(row.currency, base, st.used), at: isolate(shortTime(st.at)) }) }}<span v-if="st.wrote == null">&nbsp;· {{ t('a rate typed for today is in force') }}</span>
               </template>
             </span>
           </div>
@@ -3766,6 +3766,7 @@ const filteredBooks = computed(() => {
 .cf-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
 .cf-table { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .ic-wrap { overflow-x: auto; }
+.cur-pick { flex: 0 0 200px; }
 .rate-src { max-width: 170px; }
 .margin-in input { width: 72px; }
 .auto-status { display: flex; flex-direction: column; gap: 2px; margin: -2px 0 10px; }
