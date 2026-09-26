@@ -27,10 +27,14 @@ before any of this was written):
   cash on a dollar sale) or in the sale's currency (Cash USD). ERPNext refuses
   a dollar account on a dirham invoice at the shift close, so the till never
   offers one.
-- Change always comes back in local money from the outlet's change account,
-  as in ERPNext's own POS: the close merges a customer's invoices and books
-  all their change from ONE account (the last invoice's), so a drawer in
-  another currency takes money in and never pays change out.
+- Change comes back in local money from the company's cash, as in ERPNext's
+  own POS, unless the currency is set to give change in itself (Settings, per
+  currency, since 0.52.0): then every sale in it gives its change from that
+  currency's own drawer ("Cash USD"). The choice is fixed for the shift with
+  the rate, because the close merges a customer's invoices and books all their
+  change from ONE account (the last invoice's). An outlet whose POS Profile
+  names its own Account for Change Amount keeps it: ERPNext puts it on every
+  sale. What the till shows follows the account really used.
 """
 
 import json
@@ -118,10 +122,68 @@ def shift_rate(session_name, currency, company, pin=False):
                 "idx": idx + 1,
                 "currency": currency,
                 "exchange_rate": rate,
+                # Change in this currency or not: fixed with the rate.
+                "change_in_currency": 1 if _change_setting(currency) else 0,
                 "pinned_at": now_datetime(),
             }
         ).db_insert()
     return rate
+
+
+def _change_setting(currency):
+    row = currency_rows().get(currency)
+    return bool(row and cint(row.get("change_in_currency")))
+
+
+def shift_gives_change(session_name, currency):
+    """Whether a sale in `currency` gives its change in it, from its own
+    drawer (Settings, per currency). Fixed with the shift's rate the first
+    time the shift sells in that currency, so every invoice ERPNext merges
+    for a customer at the close names the same change account; the setting
+    until then."""
+    if session_name:
+        pinned = frappe.db.get_value(
+            "POS Session Rate",
+            {"parent": session_name, "parenttype": "POS Register Session", "currency": currency},
+            "change_in_currency",
+        )
+        if pinned is not None:
+            return bool(cint(pinned))
+    return _change_setting(currency)
+
+
+def drawer_account(profile, currency):
+    """The account of this outlet's cash drawer in `currency` ("Cash USD"),
+    or None when the outlet has none."""
+    for row in profile.get("payments") or []:
+        if frappe.get_cached_value("Mode of Payment", row.mode_of_payment, "type") != "Cash":
+            continue
+        account = frappe.db.get_value(
+            "Mode of Payment Account", {"parent": row.mode_of_payment, "company": profile.company}, "default_account"
+        )
+        if account and frappe.get_cached_value("Account", account, "account_currency") == currency:
+            return account
+    return None
+
+
+def change_plan(profile, currency, session_name=None):
+    """Where the change of a sale in `currency` at this outlet comes from, as
+    ERPNext will book it: (the account LumenPOS sets on the invoice, or None,
+    and the currency the change is given in).
+
+    The outlet's own Account for Change Amount wins when its POS Profile names
+    one: ERPNext puts it on every sale, over anything else. Otherwise the
+    change comes from that currency's own drawer when the shop gives change in
+    it, else from the company's cash, in local money, as ERPNext does."""
+    ccy = company_currency(profile.company)
+    own = profile.get("account_for_change_amount")
+    if own:
+        return None, frappe.get_cached_value("Account", own, "account_currency") or ccy
+    if currency != ccy and shift_gives_change(session_name, currency):
+        drawer = drawer_account(profile, currency)
+        if drawer:
+            return drawer, currency
+    return None, ccy
 
 
 # ---------------------------------------------------------------------------
@@ -181,6 +243,8 @@ def sale_context(profile, customer, price_list, session_name=None, pin=False):
         foreign=False,
         price_list=price_list,
         own_list=None,
+        change_account=None,
+        change_currency=None,
     )
     if not billed or billed == outlet:
         return ctx
@@ -204,6 +268,8 @@ def sale_context(profile, customer, price_list, session_name=None, pin=False):
         )
     rate = shift_rate(session_name, billed, profile.company, pin)
     list_rate = shift_rate(session_name, outlet, profile.company, pin)
+    # After the rate: a pinned shift fixed the change rule with it.
+    change_account, change_currency = change_plan(profile, billed, session_name)
     # A plain dict: v13's frappe._dict.update takes no keyword arguments.
     ctx.update(
         {
@@ -213,6 +279,8 @@ def sale_context(profile, customer, price_list, session_name=None, pin=False):
             "factor": list_rate / rate,
             "foreign": True,
             "own_list": own_price_list(customer, billed),
+            "change_account": change_account,
+            "change_currency": change_currency,
         }
     )
     return ctx
@@ -227,6 +295,8 @@ def public(ctx):
         "rate": flt(ctx.rate or 1, 9),
         "factor": flt(ctx.factor, 12),
         "foreign": 1 if ctx.foreign else 0,
+        # The money the change is given in (a sale in another currency only).
+        "change_currency": ctx.get("change_currency"),
     }
 
 
@@ -249,6 +319,9 @@ def apply_to_invoice(invoice, ctx):
     receivable = invoice.get("debit_to")
     if not receivable or frappe.get_cached_value("Account", receivable, "account_currency") != ctx.currency:
         invoice.debit_to = receivable_account(invoice.company, ctx.currency)
+    # Change from the sale currency's own drawer, when the shop gives it so.
+    if ctx.get("change_account"):
+        invoice.account_for_change_amount = ctx.change_account
 
 
 def assert_local(ctx, what):
@@ -291,6 +364,28 @@ def check_tenders(ctx, company, payments):
             ),
             title=_("Payment"),
         )
+
+
+def check_change(invoice):
+    """After insert, when ERPNext has settled the change and its account (the
+    POS Profile's own Account for Change Amount when it names one): that
+    account must be in the company currency or the sale's. ERPNext refuses any
+    other when it books the change, which for a POS Invoice is at the shift
+    close, hours later. So such a sale is refused here, with the reason."""
+    account = invoice.get("account_for_change_amount")
+    if not flt(invoice.get("change_amount")) or not account:
+        return
+    account_currency = frappe.get_cached_value("Account", account, "account_currency")
+    ccy = company_currency(invoice.company)
+    if account_currency in (ccy, invoice.currency):
+        return
+    frappe.throw(
+        _(
+            "Change at this outlet comes from {0}, which is in {1}: a sale in {2} cannot give change from it. "
+            "Take the exact amount, or set the outlet's Account for Change Amount (POS Profile) to an account in {3}."
+        ).format(account, account_currency, invoice.currency, ccy),
+        title=_("Change"),
+    )
 
 
 def amount_in_account_currency(row, invoice, company):
@@ -582,6 +677,10 @@ def client_config(profile, session_name=None):
             rate = shift_rate(session_name, currency, profile.company)
         except Exception:
             rate = 0
+        try:
+            change_currency = change_plan(profile, currency, session_name)[1]
+        except Exception:
+            change_currency = ccy
         walk_in = (
             frappe.db.get_value(
                 "Customer", row.walk_in_customer, ["customer_name", "customer_group"], as_dict=True
@@ -599,6 +698,7 @@ def client_config(profile, session_name=None):
                 "cash_mode": row.cash_mode,
                 "show_equivalent": 1 if cint(row.show_equivalent) else 0,
                 "rate": rate,
+                "change_currency": change_currency,
             }
         )
     return out

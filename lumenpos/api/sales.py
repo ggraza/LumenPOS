@@ -493,11 +493,13 @@ def submit_sale(payload):
 
     _reconcile_payment(invoice, profile)
     _drop_empty_payments(invoice)
-    # Change always comes back in local money, from the outlet's change account
-    # (the main drawer), on a sale in another currency too. ERPNext merges a
-    # customer's shift into one invoice and books ALL its change from the last
-    # invoice's account, so a change account that varied per sale would split
-    # the cash accounts wrong at the close (lumenpos.currency).
+    # Change comes from ONE account per sale currency and shift, never per
+    # tender: local money from the company's cash, or the sale's own currency
+    # from its drawer when the shop gives change in it (set by
+    # currency.apply_to_invoice), or the outlet's own Account for Change Amount.
+    # ERPNext merges a customer's shift into one invoice and books ALL its
+    # change from the last invoice's account, so a change account that varied
+    # per sale would split the cash accounts wrong at the close.
     # Shop rules on HOW this basket may be paid, re-checked server-side so a
     # stale tab, a queued offline sale or a direct API call can't bypass them.
     from lumenpos import payment_restrictions
@@ -527,6 +529,8 @@ def submit_sale(payload):
     t_build = _perf_now()
     invoice.insert()
     t_insert = _perf_now()
+    # The change account ERPNext settled on must be one this sale can book.
+    currency.check_change(invoice)
     invoice.submit()
     t_submit = _perf_now()
 
@@ -667,6 +671,7 @@ def sell_gift_card(payload):
 
     _lock_open_session(session["name"])
     invoice.insert()
+    currency.check_change(invoice)
     invoice.submit()
 
     expiry_days = frappe.db.get_single_value("LumenPOS Settings", "gift_card_expiry_days") or 0
@@ -1595,9 +1600,16 @@ def get_receipt(invoice):
 
     # A sale in another currency (lumenpos.currency): the receipt is in it, and
     # also carries the local side, the rate, each tender in its own money and
-    # the change, which always comes back in local money.
+    # the change, in the money of the account it came from: local from the
+    # company's cash, or the sale's own from its drawer.
     company_currency = currency.company_currency(doc.company)
     foreign = bool(doc.currency and doc.currency != company_currency)
+    change_currency = doc.currency
+    if foreign:
+        change_account = doc.get("account_for_change_amount")
+        change_currency = (
+            change_account and frappe.get_cached_value("Account", change_account, "account_currency")
+        ) or company_currency
 
     def tender(p):
         row = {"mode_of_payment": p.mode_of_payment, "amount": p.amount}
@@ -1642,6 +1654,7 @@ def get_receipt(invoice):
         "conversion_rate": flt(doc.conversion_rate) if foreign else 1,
         "base_grand_total": doc.base_rounded_total or doc.base_grand_total if foreign else None,
         "base_change_amount": doc.get("base_change_amount") if foreign else None,
+        "change_currency": change_currency,
         "items": [
             {
                 "item_code": row.item_code,

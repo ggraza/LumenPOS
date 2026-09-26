@@ -1271,18 +1271,24 @@
         <template v-if="generalForm.enable_multi_currency">
           <div class="sub-label">{{ t('Currencies the till sells in') }}</div>
           <p class="muted small" style="margin: 0 0 8px">
-            {{ t('Each currency gets, on saving, a walk-in customer billed in it, a receivable account and a cash drawer ("Cash USD") on every outlet. Change is always given in the local currency, from the main drawer.') }}
+            {{ t('Each currency gets, on saving, a walk-in customer billed in it, a receivable account and a cash drawer ("Cash USD") on every outlet. Change is given in the local currency from the main drawer, or, for a currency set to give change in itself, from its own drawer. An outlet whose POS Profile names its own Account for Change Amount keeps it.') }}
           </p>
-          <template v-for="(row, i) in generalForm.sale_currencies" :key="'cur' + i">
+          <!-- One block per currency: what the till does with it, then its
+               rate and what was set up for it, then the automatic rate. -->
+          <div v-for="(row, i) in generalForm.sale_currencies" :key="'cur' + i" class="cur-block">
           <div class="cf-row">
             <LinkPicker class="cur-pick" doctype="Currency" v-model="row.currency" :placeholder="t('Currency, e.g. USD')" />
             <label class="inline-check">
               <input type="checkbox" v-model="row.show_equivalent" :true-value="1" :false-value="0" />
               {{ t('Show the equivalent at the till') }}
             </label>
-            <span v-if="row.walk_in_customer" class="muted small">{{ row.walk_in_customer }} · {{ row.cash_mode }}</span>
-            <span v-else-if="!row.setup_error" class="muted small">{{ t('Set up when you save') }}</span>
-            <span v-if="row.setup_error" class="neg small">{{ t('Could not set up: {reason}', { reason: row.setup_error }) }}</span>
+            <label class="inline-check">
+              <input type="checkbox" v-model="row.change_in_currency" :true-value="1" :false-value="0" />
+              {{ row.currency ? t('Give change in {currency}', { currency: row.currency }) : t('Give change in this currency') }}
+            </label>
+            <button class="btn-ghost cur-remove" @click="generalForm.sale_currencies.splice(i, 1)"><Icon name="close" /></button>
+          </div>
+          <div class="cf-row cur-sub">
             <select v-if="generalForm.auto_rates_enabled" v-model="row.rate_source" class="cf-in rate-src">
               <option value="Fixed">{{ t('Fixed rate') }}</option>
               <option value="Automatic">{{ t('Automatic rate') }}</option>
@@ -1292,7 +1298,9 @@
               <input class="cf-in" type="number" min="0" max="99" step="0.1" v-model.number="row.rate_margin" />
               %
             </label>
-            <button class="btn-ghost" @click="generalForm.sale_currencies.splice(i, 1)"><Icon name="close" /></button>
+            <span v-if="row.walk_in_customer" class="muted small">{{ row.walk_in_customer }} · {{ row.cash_mode }}</span>
+            <span v-else-if="!row.setup_error" class="muted small">{{ t('Set up when you save') }}</span>
+            <span v-if="row.setup_error" class="neg small">{{ t('Could not set up: {reason}', { reason: row.setup_error }) }}</span>
           </div>
           <div v-if="generalForm.auto_rates_enabled && row.rate_source === 'Automatic' && row.currency" class="auto-status">
             <span v-if="!Object.keys(row.auto_status || {}).length" class="muted small">{{ t('Not updated yet: save, or press Update now.') }}</span>
@@ -1303,8 +1311,8 @@
               </template>
             </span>
           </div>
-          </template>
-          <button class="btn btn-outline add-row" @click="generalForm.sale_currencies.push({ currency: '', show_equivalent: 1 })">
+          </div>
+          <button class="btn btn-outline add-row" @click="generalForm.sale_currencies.push({ currency: '', show_equivalent: 1, change_in_currency: 0, rate_source: 'Fixed', rate_margin: 0, auto_status: {} })">
             <Icon name="plus" /> {{ t('Add a currency') }}
           </button>
 
@@ -2427,6 +2435,7 @@ function currencyRows(info) {
     setup_error: r.setup_error || '',
     currency: r.currency,
     show_equivalent: r.show_equivalent ? 1 : 0,
+    change_in_currency: r.change_in_currency ? 1 : 0,
     walk_in_customer: r.walk_in_customer || '',
     cash_mode: r.cash_mode || '',
     rate_source: r.rate_source || 'Fixed',
@@ -3767,6 +3776,9 @@ const filteredBooks = computed(() => {
 .cf-table { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .ic-wrap { overflow-x: auto; }
 .cur-pick { flex: 0 0 170px; }
+.cur-block { border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 10px; }
+.cur-block .cf-row { margin-bottom: 6px; }
+.cur-remove { margin-inline-start: auto; }
 .rate-src { max-width: 170px; }
 .margin-in input { width: 72px; }
 .auto-status { display: flex; flex-direction: column; gap: 2px; margin: -2px 0 10px; }

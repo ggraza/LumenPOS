@@ -31,12 +31,15 @@
       <div class="amount-due">
         <div class="due-label">{{ remaining > 0 ? t('Remaining') : t('Change') }}</div>
         <div class="due-value" :class="{ change: remaining < 0 }">
-          {{ remaining < 0 && sale.foreign ? money(localChange, local) : money(Math.abs(remaining), sale.currency) }}
+          {{ remaining < 0 && sale.foreign && !changeInSale ? money(localChange, local) : money(Math.abs(remaining), sale.currency) }}
         </div>
         <!-- A sale in another currency: what is left in local money, and the
-             change, which always comes back in local money (lumenpos.currency). -->
+             change: in local money from the main drawer, or in the sale's own
+             currency from its drawer when the shop gives change in it
+             (lumenpos.currency). -->
         <div v-if="sale.foreign" class="due-sub">
           <template v-if="remaining >= 0">= {{ money(fromSale(remaining, local), local) }}</template>
+          <template v-else-if="changeInSale">{{ t('From the {currency} drawer', { currency: sale.currency }) }}</template>
           <template v-else>{{ t('{amount} given back in {currency}', { amount: money(-remaining, sale.currency), currency: local }) }}</template>
         </div>
         <div v-if="sale.foreign" class="rate-note">
@@ -250,10 +253,15 @@ const sale = computed(() => {
     currency: foreign ? c.currency : session.multiCurrency?.outlet_currency || session.currency,
     rate: foreign ? c.rate : 1,
     foreign,
+    change_currency: foreign ? c.row?.change_currency || null : null,
   }
 })
-// The money the main drawer holds, and that change is given in.
+// The money the main drawer holds.
 const local = computed(() => session.localCurrency)
+// The change of this sale comes back in the sale's own currency, from its
+// drawer: the shop gives change in it (Settings, per currency), or the
+// outlet's own change account is in it. Otherwise in local money.
+const changeInSale = computed(() => sale.value.foreign && sale.value.change_currency === sale.value.currency)
 
 // A sale in another currency takes no wallets: their ledgers are in the
 // outlet's currency only.
@@ -295,8 +303,9 @@ const payable = computed(() => round2(Math.max(total.value - exchangeCredit.valu
 const paid = computed(() => payments.value.reduce((sum, p) => sum + p.amount, 0))
 const remaining = computed(() => round2(payable.value - paid.value - loyaltyAmount.value))
 
-// Change always comes back in local money, from the main drawer. This is the
-// figure ERPNext books for it: the tenders' local value less the sale's.
+// The change in local money, as ERPNext books it: the tenders' local value
+// less the sale's. The screen shows it unless the change is given in the
+// sale's own currency (changeInSale).
 const localChange = computed(() => {
   if (remaining.value >= 0) return 0
   const rate = sale.value.rate || 1
@@ -446,7 +455,7 @@ async function loadQuote() {
   if (q && typeof q.payable === 'number') {
     serverTotal.value = q.payable
     quoted.value = q.currency
-      ? { currency: q.currency, rate: q.rate || 1, foreign: Boolean(q.foreign) }
+      ? { currency: q.currency, rate: q.rate || 1, foreign: Boolean(q.foreign), change_currency: q.change_currency || null }
       : null
     if (!payments.value.length) refillAmount()
   } else {

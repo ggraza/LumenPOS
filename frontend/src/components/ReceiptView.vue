@@ -89,7 +89,7 @@
       </div>
       <div v-if="receipt.change_amount" class="row">
         <span>{{ t('Change') }}</span>
-        <span>{{ foreign ? money(receipt.base_change_amount, receipt.company_currency) : m(receipt.change_amount) }}</span>
+        <span>{{ foreign && receipt.change_currency !== receipt.currency ? money(receipt.base_change_amount, receipt.company_currency) : m(receipt.change_amount) }}</span>
       </div>
     </div>
 

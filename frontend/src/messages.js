@@ -1430,8 +1430,11 @@ const currencies = {
   "Off: a customer billed in another currency is refused at the till, with the reason.":
     "عند الإيقاف: يرفض الصندوق العميل المفوتر بعملة أخرى ويوضح السبب.",
   "Currencies the till sells in": "العملات التي يبيع بها الصندوق",
-  "Each currency gets, on saving, a walk-in customer billed in it, a receivable account and a cash drawer (\"Cash USD\") on every outlet. Change is always given in the local currency, from the main drawer.":
-    "عند الحفظ تحصل كل عملة على عميل نقدي مفوتر بها، وحساب مدينين، ودرج نقد (\"Cash USD\") في كل فرع. الباقي يرد دائما بالعملة المحلية من الدرج الرئيسي.",
+  "Each currency gets, on saving, a walk-in customer billed in it, a receivable account and a cash drawer (\"Cash USD\") on every outlet. Change is given in the local currency from the main drawer, or, for a currency set to give change in itself, from its own drawer. An outlet whose POS Profile names its own Account for Change Amount keeps it.":
+    "عند الحفظ تحصل كل عملة على عميل نقدي مفوتر بها، وحساب مدينين، ودرج نقد (\"Cash USD\") في كل فرع. الباقي يرد بالعملة المحلية من الدرج الرئيسي، أو بالعملة نفسها من درجها إذا فعلت لها إرجاع الباقي. الفرع اللي يحدد ملف نقطة البيع حقه حساب الباقي يبقى عليه.",
+  "Give change in {currency}": "إرجاع الباقي بـ {currency}",
+  "Give change in this currency": "إرجاع الباقي بهذه العملة",
+  "From the {currency} drawer": "من درج {currency}",
   "Currency, e.g. USD": "العملة، مثل USD",
   "Show the equivalent at the till": "عرض المعادل في الصندوق",
   "Set up when you save": "تجهز عند الحفظ",

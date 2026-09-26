@@ -260,6 +260,8 @@ def _sale_currencies(doc):
             "walk_in_customer": row.walk_in_customer or "",
             "cash_mode": row.cash_mode or "",
             "show_equivalent": 1 if row.show_equivalent else 0,
+            # Change in this currency, from its own drawer (0.52.0).
+            "change_in_currency": 1 if row.get("change_in_currency") else 0,
             "rates": rates.get(row.currency, []),
             # Why the last setup of this currency failed, if it did.
             "setup_error": problems.get(row.currency) or "",
@@ -509,6 +511,7 @@ def save_settings(payload):
                     "walk_in_customer": (old.walk_in_customer if old else None) or row.get("walk_in_customer") or None,
                     "cash_mode": (old.cash_mode if old else None) or row.get("cash_mode") or None,
                     "show_equivalent": 1 if row.get("show_equivalent") else 0,
+                    "change_in_currency": 1 if row.get("change_in_currency") else 0,
                     "rate_source": "Automatic" if row.get("rate_source") == "Automatic" else "Fixed",
                     "rate_margin": margin,
                     # What the daily update did stays with the currency.

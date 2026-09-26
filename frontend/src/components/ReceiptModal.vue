@@ -16,6 +16,7 @@
           {{ t('Change due:') }}
           <strong>{{
             receipt.base_change_amount != null && receipt.company_currency && receipt.currency !== receipt.company_currency
+              && receipt.change_currency !== receipt.currency
               ? money(receipt.base_change_amount, receipt.company_currency)
               : money(receipt.change_amount, receipt.currency)
           }}</strong>
