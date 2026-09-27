@@ -1359,4 +1359,8 @@ export default {
   "day:saturday": "Sam",
   "day:sunday": "Dim",
   "Entries": "Écritures",
+  "Details": "Détails",
+  "Hide details": "Masquer les détails",
+  "Saved {amount}": "Économie {amount}",
+  "Discount {pct}%": "Remise {pct} %",
 }

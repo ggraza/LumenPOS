@@ -1562,6 +1562,11 @@ const prefixedEn = {
   'lang:vi': 'Vietnamese',
 }
 const prefixedAr = {
+  // The cart footer (0.53.0): details fold away, coupon / discount / note open on demand.
+  "Details": "التفاصيل",
+  "Hide details": "إخفاء التفاصيل",
+  "Saved {amount}": "التوفير {amount}",
+  "Discount {pct}%": "خصم {pct}%",
   // Settings, General, Languages (0.53.0)
   Languages: 'اللغات',
   "The languages a cashier can pick from the top bar. The server answers in the language on the screen, ERPNext's own messages included.":

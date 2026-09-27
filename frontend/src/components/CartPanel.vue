@@ -104,54 +104,75 @@
       />
     </div>
 
-    <div v-if="cart.basketSuggestions.length" class="suggestions">
-      <button
-        v-for="(suggestion, i) in cart.basketSuggestions"
-        :key="i"
-        class="suggestion"
-        :title="suggestion.title"
-        @click="onSuggestion(suggestion)"
-      >
-        <span class="bulb"><Icon name="bulb" /></span>
-        <span>{{ suggestion.message }}</span>
-      </button>
-    </div>
+    <!-- Everything under the goods. It takes only the room it needs and
+         scrolls on a short screen, so the lines above always keep theirs. -->
+    <div class="cart-foot">
+      <div v-if="cart.basketSuggestions.length" class="suggestions">
+        <button
+          v-for="(suggestion, i) in cart.basketSuggestions"
+          :key="i"
+          class="suggestion"
+          :title="suggestion.title"
+          @click="onSuggestion(suggestion)"
+        >
+          <span class="bulb"><Icon name="bulb" /></span>
+          <span>{{ suggestion.message }}</span>
+        </button>
+      </div>
 
-    <div class="coupon-row">
-      <span v-for="code in cart.couponCodes" :key="code" class="coupon-chip">
-        <Icon name="ticket" /> {{ code }}
-        <button class="chip-x" @click="cart.removeCoupon(code)"><Icon name="close" /></button>
-      </span>
-      <form class="coupon-form" @submit.prevent="applyCoupon">
-        <input v-model="couponInput" :placeholder="t('Coupon code')" />
-        <button type="submit" class="btn btn-outline" :disabled="!couponInput.trim()">{{ t('Apply') }}</button>
-      </form>
-    </div>
+      <!-- Coupon, order discount and note: one tap opens the field. A button
+           that holds something (a coupon, a discount, a note) stays lit. -->
+      <div class="cart-tools">
+        <button
+          type="button"
+          class="tool"
+          :class="{ on: tool === 'coupon' || cart.couponCodes.length }"
+          :aria-expanded="tool === 'coupon' ? 'true' : 'false'"
+          @click="toggleTool('coupon')"
+        >
+          <Icon name="ticket" /> {{ t('Coupon') }}
+          <span v-if="cart.couponCodes.length" class="tool-count">{{ cart.couponCodes.length }}</span>
+        </button>
+        <button
+          v-if="session.settings.enable_order_discount"
+          type="button"
+          class="tool"
+          :class="{ on: tool === 'discount' || cart.orderDiscountPercent > 0 }"
+          :disabled="!cart.lines.length"
+          :aria-expanded="tool === 'discount' ? 'true' : 'false'"
+          @click="toggleTool('discount')"
+        >
+          <Icon name="tag" />
+          {{ cart.orderDiscountPercent > 0 ? t('Discount {pct}%', { pct: cart.orderDiscountPercent }) : t('Discount') }}
+        </button>
+        <button
+          type="button"
+          class="tool"
+          :class="{ on: tool === 'note' || cart.note }"
+          :title="cart.note || ''"
+          :aria-expanded="tool === 'note' ? 'true' : 'false'"
+          @click="toggleTool('note')"
+        >
+          <Icon name="report" /> {{ t('Note') }}
+          <span v-if="cart.note" class="tool-dot" />
+        </button>
+      </div>
 
-    <div class="totals">
-      <div class="row">
-        <span>{{ t('Subtotal') }}</span>
-        <span>{{ cart.show(cart.subtotal) }}</span>
+      <div v-if="tool === 'coupon'" class="tool-panel coupon-row">
+        <span v-for="code in cart.couponCodes" :key="code" class="coupon-chip">
+          <Icon name="ticket" /> {{ code }}
+          <button class="chip-x" @click="cart.removeCoupon(code)"><Icon name="close" /></button>
+        </span>
+        <form class="coupon-form" @submit.prevent="applyCoupon">
+          <input ref="toolInput" v-model="couponInput" :placeholder="t('Coupon code')" />
+          <button type="submit" class="btn btn-outline" :disabled="!couponInput.trim()">{{ t('Apply') }}</button>
+        </form>
       </div>
-      <div v-for="promo in evaluation.applied" :key="promo.name" class="row promo-row">
-        <span class="promo-badge"><Icon name="star" /> {{ promo.title }}</span>
-        <span>-{{ cart.show(promo.savings) }}</span>
-      </div>
-      <div v-for="bundle in cart.bundleBreakdown.applied" :key="bundle.key" class="row bundle-row">
-        <span class="bundle-badge-sm"><Icon name="gift" /> {{ bundle.title }}</span>
-        <span>-{{ cart.show(bundle.savings) }}</span>
-      </div>
-      <div v-if="cart.manualDiscountTotal > 0" class="row promo-row">
-        <span class="muted">{{ t('Manual discounts') }}</span>
-        <span>-{{ cart.show(cart.manualDiscountTotal) }}</span>
-      </div>
-      <div
-        v-if="session.settings.enable_order_discount && cart.lines.length"
-        class="row order-discount-row"
-      >
+      <div v-if="tool === 'discount' && session.settings.enable_order_discount" class="tool-panel row order-discount-row">
         <span class="muted">{{ t('Order discount') }}</span>
         <span class="od-control">
           <input
+            ref="toolInput"
             type="number"
             min="0"
             max="100"
@@ -162,6 +183,7 @@
             placeholder="0"
             :disabled="session.permissions.can_edit_price === false"
             @input="cart.setOrderDiscount($event.target.value)"
+            @keydown.enter="tool = ''"
           />
           <span class="od-pct">%</span>
           <span v-if="cart.orderDiscountTotal > 0" class="od-amt"
@@ -169,36 +191,72 @@
           >
         </span>
       </div>
-      <div v-for="tax in cart.taxBreakdown.exclusive" :key="'x' + tax.description" class="row">
-        <span class="muted">{{ tax.description }}</span>
-        <span>+{{ cart.show(tax.amount) }}</span>
+      <div v-if="tool === 'note'" class="tool-panel cart-note">
+        <input
+          ref="toolInput"
+          v-model="cart.note"
+          :placeholder="t('Add a note for this sale (optional)')"
+          maxlength="280"
+          @keydown.enter="tool = ''"
+        />
       </div>
-      <div v-for="tax in cart.taxBreakdown.included" :key="'i' + tax.description" class="row tax-included">
-        <span class="muted">{{ t('{description} (included)', { description: tax.description }) }}</span>
-        <span class="muted">{{ cart.show(tax.amount) }}</span>
-      </div>
-      <div v-if="cart.serviceCharge > 0" class="row">
-        <span class="muted">{{ t('Service charge ({pct}%)', { pct: session.settings.service_charge_percent }) }}</span>
-        <span>+{{ cart.show(cart.serviceCharge) }}</span>
-      </div>
-      <div class="row grand">
-        <span>{{ t('Total') }} <span class="muted small">{{ t('({count} items)', { count: cart.itemCount }) }}</span></span>
-        <span>{{ cart.show(cart.total) }}</span>
-      </div>
-      <!-- The same total in other money: the local value of a sale in another
-           currency, and the equivalents the shop chose to show. -->
-      <div v-for="eq in equivalents" :key="eq.currency" class="row equiv">
-        <span class="muted">{{ eq.label }}</span>
-        <span class="muted">{{ money(eq.amount, eq.currency) }}</span>
-      </div>
-    </div>
 
-    <div class="cart-note">
-      <input
-        v-model="cart.note"
-        :placeholder="t('Add a note for this sale (optional)')"
-        maxlength="280"
-      />
+      <div class="totals">
+        <!-- The breakdown folds away under one line: the total, with what was
+             saved beside the toggle. Opened or not, it is remembered here. -->
+        <div v-if="cart.lines.length" class="totals-head">
+          <button type="button" class="details-toggle" :aria-expanded="detailsOpen ? 'true' : 'false'" @click="toggleDetails">
+            {{ detailsOpen ? t('Hide details') : t('Details') }} <span class="chev">{{ detailsOpen ? '▴' : '▾' }}</span>
+          </button>
+          <span v-if="!detailsOpen && savings > 0.005" class="saved">{{ t('Saved {amount}', { amount: cart.show(savings) }) }}</span>
+        </div>
+        <template v-if="detailsOpen && cart.lines.length">
+          <div class="row">
+            <span>{{ t('Subtotal') }}</span>
+            <span>{{ cart.show(cart.subtotal) }}</span>
+          </div>
+          <div v-for="promo in evaluation.applied" :key="promo.name" class="row promo-row">
+            <span class="promo-badge"><Icon name="star" /> {{ promo.title }}</span>
+            <span>-{{ cart.show(promo.savings) }}</span>
+          </div>
+          <div v-for="bundle in cart.bundleBreakdown.applied" :key="bundle.key" class="row bundle-row">
+            <span class="bundle-badge-sm"><Icon name="gift" /> {{ bundle.title }}</span>
+            <span>-{{ cart.show(bundle.savings) }}</span>
+          </div>
+          <div v-if="cart.manualDiscountTotal > 0" class="row promo-row">
+            <span class="muted">{{ t('Manual discounts') }}</span>
+            <span>-{{ cart.show(cart.manualDiscountTotal) }}</span>
+          </div>
+          <div v-if="cart.orderDiscountTotal > 0" class="row promo-row">
+            <span class="muted">{{ t('Order discount') }} ({{ cart.orderDiscountPercent }}%)</span>
+            <span>-{{ cart.show(cart.orderDiscountTotal) }}</span>
+          </div>
+          <div v-for="tax in cart.taxBreakdown.exclusive" :key="'x' + tax.description" class="row">
+            <span class="muted">{{ tax.description }}</span>
+            <span>+{{ cart.show(tax.amount) }}</span>
+          </div>
+          <div v-for="tax in cart.taxBreakdown.included" :key="'i' + tax.description" class="row tax-included">
+            <span class="muted">{{ t('{description} (included)', { description: tax.description }) }}</span>
+            <span class="muted">{{ cart.show(tax.amount) }}</span>
+          </div>
+          <div v-if="cart.serviceCharge > 0" class="row">
+            <span class="muted">{{ t('Service charge ({pct}%)', { pct: session.settings.service_charge_percent }) }}</span>
+            <span>+{{ cart.show(cart.serviceCharge) }}</span>
+          </div>
+        </template>
+        <div class="row grand">
+          <span>{{ t('Total') }} <span class="muted small">{{ t('({count} items)', { count: cart.itemCount }) }}</span></span>
+          <span>{{ cart.show(cart.total) }}</span>
+        </div>
+        <!-- The same total in other money: the local value of a sale in another
+             currency, and the equivalents the shop chose to show, on one line. -->
+        <div v-if="equivalents.length" class="row equiv">
+          <span class="muted">≈</span>
+          <span class="muted equiv-values">
+            <span v-for="eq in equivalents" :key="eq.currency" :title="eq.label">{{ money(eq.amount, eq.currency) }}</span>
+          </span>
+        </div>
+      </div>
     </div>
 
     <div class="actions">
@@ -248,7 +306,7 @@
 
 <script setup>
 import Icon from './Icon.vue'
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { t } from '../i18n'
 import { useCartStore } from '../stores/cart'
 import { useSessionStore } from '../stores/session'
@@ -266,6 +324,40 @@ const catalog = useCatalogStore()
 const customerOpen = ref(false)
 const couponInput = ref('')
 const giftCardOpen = ref(false)
+
+// One of coupon, discount or note open under the lines, or none.
+const tool = ref('')
+const toolInput = ref(null)
+async function toggleTool(name) {
+  tool.value = tool.value === name ? '' : name
+  if (!tool.value) return
+  await nextTick()
+  const el = Array.isArray(toolInput.value) ? toolInput.value[0] : toolInput.value
+  if (el && el.focus) el.focus()
+}
+
+// The breakdown under the total: folded unless this device opened it.
+const DETAILS_KEY = 'lumenpos-cart-details'
+function detailsRemembered() {
+  try {
+    return localStorage.getItem(DETAILS_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+const detailsOpen = ref(detailsRemembered())
+function toggleDetails() {
+  detailsOpen.value = !detailsOpen.value
+  try {
+    localStorage.setItem(DETAILS_KEY, detailsOpen.value ? '1' : '0')
+  } catch {
+    /* private window: open or closed until the tab closes */
+  }
+}
+// What the folded breakdown saves the customer, shown beside the toggle.
+const savings = computed(
+  () => cart.promoSavings + cart.bundleSavings + cart.manualDiscountTotal + cart.orderDiscountTotal
+)
 
 function onGiftCardSold(receipt) {
   giftCardOpen.value = false
@@ -339,6 +431,7 @@ async function applyCoupon() {
   try {
     const promo = await cart.addCoupon(couponInput.value)
     couponInput.value = ''
+    tool.value = ''
     if (promo) session.notify(t('Coupon applied: {title}', { title: promo.title }))
   } catch (e) {
     session.notify(e.message, true)
@@ -440,7 +533,7 @@ function discard() {
   white-space: nowrap;
 }
 .exchange-btn:hover { color: var(--brand); border-color: var(--brand); }
-.cart-note { padding: 0 14px 8px; }
+
 .cart-note input { width: 100%; font-size: 13px; }
 .pricebook-note {
   padding: 6px 16px;
@@ -469,12 +562,83 @@ function discard() {
   padding: 4px 11px;
 }
 .lines {
-  flex: 1;
+  flex: 1 1 auto;
   overflow-y: auto;
-  min-height: 0;
+  /* The goods never shrink below three lines: what sits under them scrolls
+     first (.cart-foot). */
+  min-height: 180px;
 }
-.suggestions {
+.cart-foot {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   border-top: 1px solid var(--border);
+}
+.cart-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 16px;
+}
+.tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 11px;
+  cursor: pointer;
+}
+.tool:hover:not(:disabled) { color: var(--brand); border-color: var(--brand); }
+.tool:disabled { opacity: 0.5; cursor: default; }
+.tool.on {
+  color: var(--brand-dark);
+  background: rgba(20, 99, 255, 0.08);
+  border-color: rgba(20, 99, 255, 0.35);
+}
+html[data-theme='dark'] .tool.on { color: #9fc0ff; background: rgba(47, 123, 255, 0.16); }
+.tool-count {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 10.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.tool-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--brand); }
+.tool-panel { padding: 0 16px 8px; }
+.totals-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 2px;
+}
+.details-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: transparent;
+  padding: 2px 0;
+  cursor: pointer;
+}
+.details-toggle:hover { color: var(--brand); }
+.chev { font-size: 10px; }
+.saved { font-size: 12px; font-weight: 700; color: var(--promo); }
+html[data-theme='dark'] .saved { color: #c9b0ff; }
+.equiv-values { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 12px; }
+.suggestions {
   padding: 8px 16px 0;
   display: flex;
   flex-direction: column;
@@ -507,8 +671,6 @@ html[data-theme='dark'] .suggestion:hover { background: rgba(150, 100, 255, 0.3)
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 8px 16px;
-  border-top: 1px solid var(--border);
 }
 .coupon-chip {
   display: inline-flex;
@@ -533,7 +695,7 @@ html[data-theme='dark'] .suggestion:hover { background: rgba(150, 100, 255, 0.3)
 }
 .totals {
   border-top: 1px solid var(--border);
-  padding: 12px 16px 4px;
+  padding: 8px 16px 4px;
 }
 .row {
   display: flex;

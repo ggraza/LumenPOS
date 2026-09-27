@@ -1359,4 +1359,8 @@ export default {
   "day:saturday": "Sáb",
   "day:sunday": "Dom",
   "Entries": "Asientos",
+  "Details": "Detalles",
+  "Hide details": "Ocultar detalles",
+  "Saved {amount}": "Ahorro {amount}",
+  "Discount {pct}%": "Descuento {pct}%",
 }

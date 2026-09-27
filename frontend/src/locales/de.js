@@ -1359,4 +1359,8 @@ export default {
   "day:saturday": "Sa",
   "day:sunday": "So",
   "Entries": "Buchungen",
+  "Details": "Details",
+  "Hide details": "Details ausblenden",
+  "Saved {amount}": "Gespart {amount}",
+  "Discount {pct}%": "Rabatt {pct}%",
 }

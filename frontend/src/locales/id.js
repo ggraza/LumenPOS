@@ -1359,4 +1359,8 @@ export default {
   "day:saturday": "Sab",
   "day:sunday": "Min",
   "Entries": "Entri",
+  "Details": "Rincian",
+  "Hide details": "Sembunyikan rincian",
+  "Saved {amount}": "Hemat {amount}",
+  "Discount {pct}%": "Diskon {pct}%",
 }

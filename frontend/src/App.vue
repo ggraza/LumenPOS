@@ -96,7 +96,7 @@
           <!-- The outlet, switchable here too (a manager covering outlets of
                two companies no longer has to close a shift to change over). -->
           <span class="topbar-user">
-            {{ session.userFullname }} ·
+            <span class="user-name">{{ session.userFullname }} ·</span>
             <select
               v-if="session.availableProfiles.length > 1"
               class="outlet-switch"
@@ -355,11 +355,16 @@ function setupAutoLock() {
   align-items: center;
   gap: 12px;
   min-width: 0;
+  overflow: hidden;
 }
 .topbar-title {
   font-size: 17px;
   font-weight: 700;
+  white-space: nowrap;
 }
+/* In a long language (Vietnamese, German) the shift timer is the one to give
+   way: it is cut short rather than pushing the bar onto two lines. */
+.tb-shift { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .tb-pill {
   display: inline-flex;
   align-items: center;
@@ -377,10 +382,19 @@ function setupAutoLock() {
   display: flex;
   align-items: center;
   gap: 14px;
+  flex-shrink: 0;
 }
 .topbar-user {
   font-size: 12.5px;
   opacity: 0.75;
+  white-space: nowrap;
+}
+.lang-pill,
+.register-pill,
+.offline-pill { white-space: nowrap; }
+/* Below 1400px the user's name makes room: the outlet stays. */
+@media (max-width: 1400px) {
+  .topbar-user .user-name { display: none; }
 }
 .outlet-switch {
   font-size: 12.5px;

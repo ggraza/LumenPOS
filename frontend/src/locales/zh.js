@@ -1359,4 +1359,8 @@ export default {
   "day:saturday": "周六",
   "day:sunday": "周日",
   "Entries": "凭证",
+  "Details": "明细",
+  "Hide details": "收起明细",
+  "Saved {amount}": "已省 {amount}",
+  "Discount {pct}%": "折扣 {pct}%",
 }

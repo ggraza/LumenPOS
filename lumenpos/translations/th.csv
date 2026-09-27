@@ -749,7 +749,7 @@
 "You can only manage your own register","คุณจัดการได้เฉพาะเครื่องคิดเงินของคุณเอง"
 "You can't approve your own request, another approver must.","คุณอนุมัติคำขอของตัวเองไม่ได้ ต้องให้ผู้อนุมัติคนอื่นอนุมัติ"
 "You cannot see {0}'s figures","คุณดูตัวเลขของ {0} ไม่ได้"
-"You do not have access to the POS. Ask an administrator to grant you the LumenPOS Cashier role (or POS Invoice access).","คุณไม่มีสิทธิ์เข้าถึง POS ขอให้ผู้ดูแลระบบให้บทบาท LumenPOS Cashier แก่คุณ (หรือสิทธิ์เข้าถึงใบแจ้งหนี้ POS)"
+"You do not have access to the POS. Ask an administrator to grant you the LumenPOS Cashier role (or POS Invoice access).","คุณไม่มีสิทธิ์เข้าถึง POS ขอให้ผู้ดูแลระบบให้บทบาท แคชเชียร์ LumenPOS แก่คุณ (หรือสิทธิ์เข้าถึงใบแจ้งหนี้ POS)"
 "You're not allowed to edit prices or apply discounts on a sale.","คุณไม่ได้รับอนุญาตให้แก้ไขราคาหรือให้ส่วนลดในการขาย"
 "You're not allowed to make returns.","คุณไม่ได้รับอนุญาตให้รับคืนสินค้า"
 "Your LumenPOS PIN reset code","รหัสรีเซ็ต PIN ของ LumenPOS ของคุณ"

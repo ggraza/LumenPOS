@@ -1359,4 +1359,8 @@ export default {
   "day:saturday": "ส.",
   "day:sunday": "อา.",
   "Entries": "รายการบัญชี",
+  "Details": "รายละเอียด",
+  "Hide details": "ซ่อนรายละเอียด",
+  "Saved {amount}": "ประหยัด {amount}",
+  "Discount {pct}%": "ส่วนลด {pct}%",
 }
