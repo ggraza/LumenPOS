@@ -749,7 +749,7 @@
 "You can only manage your own register","Sie können nur Ihre eigene Kasse verwalten"
 "You can't approve your own request, another approver must.","Sie können Ihre eigene Anfrage nicht freigeben, das muss ein anderer Freigeber tun."
 "You cannot see {0}'s figures","Sie können die Zahlen von {0} nicht sehen"
-"You do not have access to the POS. Ask an administrator to grant you the LumenPOS Cashier role (or POS Invoice access).","Sie haben keinen Zugriff auf das Kassensystem. Bitten Sie einen Administrator, Ihnen die Rolle LumenPOS Cashier (oder Zugriff auf POS-Rechnungen) zu geben."
+"You do not have access to the POS. Ask an administrator to grant you the LumenPOS Cashier role (or POS Invoice access).","Sie haben keinen Zugriff auf das Kassensystem. Bitten Sie einen Administrator, Ihnen die Rolle LumenPOS-Kassierer (oder Zugriff auf POS-Rechnungen) zu geben."
 "You're not allowed to edit prices or apply discounts on a sale.","Sie dürfen in einem Verkauf keine Preise ändern oder Rabatte gewähren."
 "You're not allowed to make returns.","Sie dürfen keine Rückgaben durchführen."
 "Your LumenPOS PIN reset code","Ihr Code zum Zurücksetzen der LumenPOS-PIN"
