@@ -18,6 +18,7 @@
   "closing_started_at",
   "closing_attempts",
   "closing_error",
+  "expected_pending",
   "float_section",
   "opening_float",
   "foreign_floats",
@@ -92,6 +93,15 @@
    "fieldname": "closing_error",
    "fieldtype": "Small Text",
    "label": "Closing Error",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "expected_pending",
+   "description": "The expected takings could not be worked out when this shift was closed. They are filled in from its POS Closing Entry when it consolidates.",
+   "fieldname": "expected_pending",
+   "fieldtype": "Check",
+   "label": "Expected Takings Pending",
    "read_only": 1
   },
   {
@@ -215,7 +225,7 @@
    "link_fieldname": "lumenpos_session"
   }
  ],
- "modified": "2026-09-26 12:00:00.000000",
+ "modified": "2026-09-28 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "LumenPOS",
  "name": "POS Register Session",

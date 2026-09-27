@@ -275,6 +275,7 @@
 "How many coupons should I generate?","ต้องการสร้างคูปองกี่ใบ?"
 "How many times each code may be redeemed. 1 = single use, 0 = unlimited (until it expires).","จำนวนครั้งที่ใช้รหัสแต่ละรหัสได้ 1 = ใช้ได้ครั้งเดียว 0 = ไม่จำกัด (จนกว่าจะหมดอายุ)"
 "If paid with","หากชำระด้วย"
+"If you cannot close it, a manager can close it for you from that outlet's Register page.","หากคุณปิดกะนั้นไม่ได้ ผู้จัดการสามารถปิดให้คุณได้จากหน้าเครื่องคิดเงินของสาขานั้น"
 "Imported {0}","นำเข้าเมื่อ {0}"
 "Individual customers","ลูกค้าบุคคลธรรมดา"
 "Initial Amount","มูลค่าเริ่มต้น"

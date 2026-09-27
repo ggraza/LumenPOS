@@ -78,6 +78,9 @@
           </template>
         </p>
         <pre v-if="closeState.closing_error" class="err-detail">{{ closeState.closing_error }}</pre>
+        <div v-if="closedResult.expected_pending" class="summary-error">
+          {{ t("The expected takings could not be worked out at the close. They are filled in from the shift's POS Closing Entry when it consolidates.") }}
+        </div>
         <button
           v-if="closeState.closing_status === 'Failed' && session.permissions.close_register !== false"
           class="btn btn-primary"
@@ -93,9 +96,10 @@
           <tbody>
             <tr v-for="row in closedResult.counts" :key="row.mode_of_payment">
               <td>{{ row.mode_of_payment }}</td>
-              <td class="right">{{ money(row.expected_amount, row.currency) }}</td>
+              <td class="right">{{ closedResult.expected_pending ? '-' : money(row.expected_amount, row.currency) }}</td>
               <td class="right">{{ money(row.counted_amount, row.currency) }}</td>
-              <td class="right" :class="row.difference < -0.005 ? 'neg' : row.difference > 0.005 ? 'pos' : ''">
+              <td v-if="closedResult.expected_pending" class="right">-</td>
+              <td v-else class="right" :class="row.difference < -0.005 ? 'neg' : row.difference > 0.005 ? 'pos' : ''">
                 {{ money(row.difference, row.currency) }}
               </td>
             </tr>
@@ -240,6 +244,77 @@
       </div>
     </template>
 
+    <!-- A manager closes a shift someone else left open at this outlet (each
+         cashier's own in "Per cashier" scope): one whose cashier went home,
+         may not close a register, or is held back elsewhere by "One open
+         shift per person". -->
+    <div v-if="otherShifts.length" class="card panel">
+      <div class="panel-head">
+        {{ t('Other open shifts here') }}
+        <button class="btn btn-outline" :disabled="otherBusy" @click="loadOtherShifts"><Icon name="refresh" /></button>
+      </div>
+      <div class="panel-body">
+        <p class="muted small" style="margin: 0 0 10px">
+          {{ t('Shifts other people still have open at this outlet. Close one for a cashier who has gone home, who may not close a register, or whose shift will not close.') }}
+        </p>
+        <div v-for="r in otherShifts" :key="r.session" class="other-row">
+          <div class="other-info">
+            <b>{{ r.opened_by_name || r.opened_by }}</b>
+            <span class="muted small">{{ r.session }} · {{ shortTime(r.opened_at) }}</span>
+          </div>
+          <button
+            v-if="canClose && otherTarget?.session !== r.session"
+            class="btn btn-outline"
+            :disabled="otherBusy"
+            @click="pickOther(r)"
+          >
+            {{ t('Close this shift') }}
+          </button>
+        </div>
+        <div v-if="otherTarget" class="other-close">
+          <div class="other-close-head">
+            {{ t('Count the drawers of {name}, then close the shift.', { name: otherTarget.opened_by_name || otherTarget.opened_by }) }}
+          </div>
+          <p v-if="otherLoading" class="muted">{{ t('Loading session summary…') }}</p>
+          <template v-else>
+            <div v-if="otherError" class="summary-error">
+              {{ t('⚠ Couldn\'t load the expected takings') }} ({{ otherError }}). {{ t('You can still close the register. Enter the counted amounts below.') }}
+            </div>
+            <table class="count-table">
+              <thead>
+                <tr><th>{{ t('Payment') }}</th><th class="right">{{ t('Expected') }}</th><th class="right">{{ t('Counted') }}</th><th class="right">{{ t('Difference') }}</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in otherRows" :key="row.mode_of_payment">
+                  <td>
+                    {{ row.mode_of_payment }}
+                    <span v-if="row.currency && row.currency !== otherLocal" class="ccy-tag">{{ row.currency }}</span>
+                  </td>
+                  <td class="right">{{ row.expected_amount != null ? money(row.expected_amount, row.currency || otherLocal) : '-' }}</td>
+                  <td class="right">
+                    <input type="text" inputmode="decimal" class="count-input" v-model="otherCounted[row.mode_of_payment]" />
+                  </td>
+                  <td class="right" :class="otherDiffClass(row)">{{ money(otherDiff(row), row.currency || otherLocal) }}</td>
+                </tr>
+                <tr v-if="!otherRows.length">
+                  <td colspan="4" class="muted" style="text-align: center; padding: 14px">
+                    {{ t('No takings recorded this session.') }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <input v-model="otherNote" :placeholder="t('Closing note (optional)')" style="width: 100%; margin-top: 12px" />
+            <div class="other-actions">
+              <button class="btn btn-outline" :disabled="otherBusy" @click="otherTarget = null">{{ t('Cancel') }}</button>
+              <button class="btn btn-danger" :disabled="otherBusy" @click="closeOther">
+                {{ otherBusy ? t('Closing…') : t('Close this shift') }}
+              </button>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
     <!-- Previous sessions (Z-report history, linked to ERPNext entries) -->
     <div class="card panel" v-if="!session.offline">
       <div class="panel-head">
@@ -259,7 +334,8 @@
           <div class="muted small">
             {{ past.sales_count }} {{ t('sales') }} · {{ t('takings') }} {{ money(past.total_sales, local) }} ·
             {{ t('discounts') }} {{ money(past.total_discounts, local) }} ·
-            <span :class="past.total_difference < -0.005 ? 'neg' : past.total_difference > 0.005 ? 'pos' : ''">
+            <span v-if="past.expected_pending" class="muted">{{ t('difference pending') }}</span>
+            <span v-else :class="past.total_difference < -0.005 ? 'neg' : past.total_difference > 0.005 ? 'pos' : ''">
               {{ t('difference') }} {{ money(past.total_difference, local) }}
             </span>
           </div>
@@ -373,8 +449,99 @@ async function retryClosing(sessionName, isPending = false) {
 onMounted(() => {
   load()
   loadHistory()
+  loadOtherShifts()
   if (pending.value) pollCloseState(pending.value.session)
 })
+
+// --- a manager closes a shift someone else left open at this outlet ---
+const otherShifts = ref([])
+const otherTarget = ref(null)
+const otherSummary = ref(null)
+const otherCounted = ref({})
+const otherNote = ref('')
+const otherError = ref('')
+const otherLoading = ref(false)
+const otherBusy = ref(false)
+const otherLocal = computed(() => otherSummary.value?.company_currency || session.localCurrency)
+
+async function loadOtherShifts() {
+  if (session.offline || !session.permissions.is_manager) {
+    otherShifts.value = []
+    return
+  }
+  otherShifts.value = await call('lumenpos.api.register.list_open_shifts', {
+    pos_profile: session.posProfile,
+  }).catch(() => [])
+  if (otherTarget.value && !otherShifts.value.some((r) => r.session === otherTarget.value.session)) {
+    otherTarget.value = null
+  }
+}
+
+async function pickOther(row) {
+  otherTarget.value = row
+  otherSummary.value = null
+  otherCounted.value = {}
+  otherNote.value = ''
+  otherError.value = ''
+  otherLoading.value = true
+  try {
+    otherSummary.value = await call('lumenpos.api.register.get_session_summary', { session: row.session })
+    for (const r of otherSummary.value.expected) otherCounted.value[r.mode_of_payment] = null
+  } catch (e) {
+    // The drawers can still be counted: the close goes through and the
+    // expected figures come from ERPNext's closing entry at consolidation.
+    otherError.value = e.message || t('request failed')
+    for (const m of session.paymentModes) otherCounted.value[m.mode_of_payment] = null
+  } finally {
+    otherLoading.value = false
+  }
+}
+
+const otherRows = computed(() => {
+  if (otherSummary.value) return otherSummary.value.expected
+  if (!otherError.value) return []
+  return (session.paymentModes || []).map((m) => ({ mode_of_payment: m.mode_of_payment, expected_amount: null }))
+})
+
+function otherDiff(row) {
+  const value = parseMoney(otherCounted.value[row.mode_of_payment])
+  if (value == null || row.expected_amount == null) return 0
+  return value - row.expected_amount
+}
+
+function otherDiffClass(row) {
+  const d = otherDiff(row)
+  return d < -0.005 ? 'neg' : d > 0.005 ? 'pos' : ''
+}
+
+async function closeOther() {
+  const target = otherTarget.value
+  if (!target) return
+  const name = target.opened_by_name || target.opened_by
+  if (!confirm(t('Close the shift of {name}? Nothing more can be sold on it.', { name }))) return
+  otherBusy.value = true
+  try {
+    const countedClean = {}
+    for (const [mode, value] of Object.entries(otherCounted.value)) {
+      countedClean[mode] = parseMoney(value) || 0
+    }
+    await call('lumenpos.api.register.close_register', {
+      session: target.session,
+      counted: countedClean,
+      closing_note: otherNote.value || null,
+      // Stale-closing-screen guard, as for this page's own close.
+      expected_invoice_count: otherSummary.value ? otherSummary.value.sales_count : null,
+    })
+    session.notify(t('Shift {session} is closing. Its sales are consolidated in the background.', { session: target.session }))
+    otherTarget.value = null
+    await loadOtherShifts()
+    loadHistory()
+  } catch (e) {
+    session.notify(e.message, true)
+  } finally {
+    otherBusy.value = false
+  }
+}
 
 async function loadHistory() {
   if (session.offline) return
@@ -706,6 +873,19 @@ async function close() {
   margin: 8px 0;
 }
 .force-new-block { margin-top: 10px; }
+.other-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.other-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.other-close { margin-top: 14px; padding-top: 12px; border-top: 2px solid var(--border); }
+.other-close-head { font-weight: 700; margin-bottom: 10px; }
+.other-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .or-sep {
   display: flex;
   align-items: center;

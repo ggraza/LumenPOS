@@ -525,7 +525,13 @@ def _default_pos_profile():
 def _other_open_registers(current_profile):
     """Open shifts this user still holds on OTHER outlets, so the Open Register
     dialog can remind them a drawer is open elsewhere (multi-outlet allows more
-    than one open at once, so a forgotten shift wouldn't otherwise surface)."""
+    than one open at once, so a forgotten shift wouldn't otherwise surface).
+
+    `reachable`: the outlet is one this user can still work on at the till
+    (enabled, and theirs), so they can go and close the shift there. Only such
+    a shift holds them back under "One open shift per person"; one they cannot
+    reach any more (outlet disabled, access removed) is for a manager to close
+    and must never lock them out."""
     rows = frappe.get_all(
         "POS Register Session",
         filters={
@@ -536,11 +542,13 @@ def _other_open_registers(current_profile):
         fields=["name", "pos_profile", "opened_at"],
         order_by="opened_at asc",
     )
+    reachable = set(_user_profiles()) if rows else set()
     return [
         {
             "session": r.name,
             "pos_profile": r.pos_profile,
             "opened_at": str(r.opened_at) if r.opened_at else None,
+            "reachable": r.pos_profile in reachable,
         }
         for r in rows
     ]

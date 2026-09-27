@@ -275,6 +275,7 @@
 "How many coupons should I generate?","Combien de coupons faut-il générer ?"
 "How many times each code may be redeemed. 1 = single use, 0 = unlimited (until it expires).","Nombre de fois où chaque code peut être utilisé. 1 = usage unique, 0 = illimité (jusqu'à son expiration)."
 "If paid with","Si payé par"
+"If you cannot close it, a manager can close it for you from that outlet's Register page.","Si vous ne pouvez pas la fermer, un responsable peut la fermer pour vous depuis la page Caisse de ce magasin."
 "Imported {0}","Import du {0}"
 "Individual customers","Clients particuliers"
 "Initial Amount","Montant initial"

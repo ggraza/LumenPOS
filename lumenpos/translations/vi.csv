@@ -275,6 +275,7 @@
 "How many coupons should I generate?","Cần tạo bao nhiêu phiếu giảm giá?"
 "How many times each code may be redeemed. 1 = single use, 0 = unlimited (until it expires).","Số lần mỗi mã được sử dụng. 1 = dùng một lần, 0 = không giới hạn (đến khi hết hạn)."
 "If paid with","Nếu thanh toán bằng"
+"If you cannot close it, a manager can close it for you from that outlet's Register page.","Nếu bạn không thể đóng ca đó, quản lý có thể đóng giúp bạn từ trang Quầy thu ngân của cửa hàng đó."
 "Imported {0}","Nhập lúc {0}"
 "Individual customers","Khách hàng cá nhân"
 "Initial Amount","Số tiền ban đầu"

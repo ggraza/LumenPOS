@@ -286,7 +286,9 @@ def save_settings(payload):
     doc = frappe.get_doc("LumenPOS Settings")
     doc.offline_stock_only = 1 if payload.get("offline_stock_only") else 0
     doc.shift_scope = payload.get("shift_scope") or "Per outlet"
-    doc.one_shift_per_user = 1 if payload.get("one_shift_per_user") else 0
+    # A screen from before 0.54.0 sends no such key: leave the choice alone.
+    if "one_shift_per_user" in payload:
+        doc.one_shift_per_user = 1 if payload.get("one_shift_per_user") else 0
     doc.variance_alert_enabled = 1 if payload.get("variance_alert_enabled") else 0
     doc.variance_alert_threshold = flt(payload.get("variance_alert_threshold"))
     doc.variance_alert_role = payload.get("variance_alert_role") or None

@@ -275,6 +275,7 @@
 "How many coupons should I generate?","كم عدد الكوبونات التي تريد توليدها؟"
 "How many times each code may be redeemed. 1 = single use, 0 = unlimited (until it expires).","عدد المرات التي يمكن فيها استخدام كل رمز. 1 = استخدام واحد، 0 = بلا حد (حتى انتهاء صلاحيته)."
 "If paid with","إذا تم الدفع عبر"
+"If you cannot close it, a manager can close it for you from that outlet's Register page.","إذا لم تستطع إغلاقها، يمكن لمدير إغلاقها عنك من صفحة صندوق ذلك الفرع."
 "Imported {0}","استيراد {0}"
 "Individual customers","العملاء الأفراد"
 "Initial Amount","المبلغ الأولي"

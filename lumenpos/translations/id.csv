@@ -275,6 +275,7 @@
 "How many coupons should I generate?","Berapa kupon yang harus saya buat?"
 "How many times each code may be redeemed. 1 = single use, 0 = unlimited (until it expires).","Berapa kali setiap kode boleh dipakai. 1 = sekali pakai, 0 = tanpa batas (sampai kedaluwarsa)."
 "If paid with","Jika dibayar dengan"
+"If you cannot close it, a manager can close it for you from that outlet's Register page.","Jika Anda tidak bisa menutupnya, manajer bisa menutupnya untuk Anda dari halaman Kasir gerai itu."
 "Imported {0}","Diimpor {0}"
 "Individual customers","Pelanggan perorangan"
 "Initial Amount","Nilai Awal"

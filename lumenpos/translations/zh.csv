@@ -275,6 +275,7 @@
 "How many coupons should I generate?","要生成多少张优惠券？"
 "How many times each code may be redeemed. 1 = single use, 0 = unlimited (until it expires).","每个券码可使用的次数。1 = 仅限一次，0 = 不限次数（直到过期）。"
 "If paid with","若支付方式为"
+"If you cannot close it, a manager can close it for you from that outlet's Register page.","如果您无法关闭，经理可以在该门店的收银台页面替您关闭。"
 "Imported {0}","导入于 {0}"
 "Individual customers","个人客户"
 "Initial Amount","初始金额"

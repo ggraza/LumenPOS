@@ -1562,13 +1562,24 @@ const prefixedEn = {
   'lang:vi': 'Vietnamese',
 }
 const prefixedAr = {
-  // One open shift per person (0.53.0).
+  // One open shift per person (0.54.0).
   "You still have {n} other registers open:": "لا يزال لديك صناديق أخرى مفتوحة ({n}):",
   "Remember to close each one when its shift ends.": "تذكر إغلاق كل منها عند انتهاء ورديته.",
   "Close your open shift first": "أغلق ورديتك المفتوحة أولا",
   "This shop allows one open shift per person at a time. Close it, then open this one.": "يسمح هذا المتجر بوردية مفتوحة واحدة لكل شخص في الوقت نفسه. أغلقها ثم افتح هذه.",
   "Go to its Register page": "اذهب إلى صفحة صندوقها",
   "One open shift per person": "وردية مفتوحة واحدة لكل شخص",
+  // Nobody is held back by a shift that will not close (0.54.0).
+  "Not open to you any more: ask a manager to close it.": "لم تعد متاحة لك: اطلب من مدير إغلاقها.",
+  "If you cannot close it, a manager can close it for you from that outlet's Register page.": "إذا لم تستطع إغلاقها، يمكن لمدير إغلاقها عنك من صفحة صندوق ذلك الفرع.",
+  "Other open shifts here": "ورديات أخرى مفتوحة هنا",
+  "Shifts other people still have open at this outlet. Close one for a cashier who has gone home, who may not close a register, or whose shift will not close.": "ورديات ما زالت مفتوحة لأشخاص آخرين في هذا الفرع. أغلق أيا منها نيابة عن كاشير غادر، أو لا يملك صلاحية إغلاق الصندوق، أو تعذر عليه إغلاق ورديته.",
+  "Close this shift": "إغلاق هذه الوردية",
+  "Count the drawers of {name}, then close the shift.": "اعدد ما في أدراج {name} ثم أغلق الوردية.",
+  "Close the shift of {name}? Nothing more can be sold on it.": "إغلاق وردية {name}؟ لن يمكن البيع عليها بعد ذلك.",
+  "Shift {session} is closing. Its sales are consolidated in the background.": "جار إغلاق الوردية {session}، ويتم تجميع مبيعاتها في الخلفية.",
+  "The expected takings could not be worked out at the close. They are filled in from the shift's POS Closing Entry when it consolidates.": "تعذر حساب الإيرادات المتوقعة عند الإغلاق، وستؤخذ من قيد إغلاق نقطة البيع للوردية عند تجميعها.",
+  "difference pending": "الفرق قيد الحساب",
   "On: nobody opens a new shift while they still have one open at another outlet, they close it first. Off (the default): a person may hold shifts at several outlets at once, and the till only reminds them.": "تشغيل: لا يفتح أحد وردية جديدة وما زالت لديه وردية مفتوحة في فرع آخر، بل يغلقها أولا. إيقاف (الافتراضي): يمكن للشخص أن يحتفظ بورديات في عدة فروع في وقت واحد، ويكتفي الصندوق بتذكيره.",
   // The cart footer (0.53.0): details fold away, coupon / discount / note open on demand.
   "Details": "التفاصيل",

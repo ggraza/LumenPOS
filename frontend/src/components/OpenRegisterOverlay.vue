@@ -94,7 +94,7 @@
             <div v-for="r in others" :key="r.session" class="oe-item">
               {{ r.pos_profile }} <span class="oe-sess">({{ r.session }})</span>
               <button
-                v-if="session.availableProfiles.includes(r.pos_profile)"
+                v-if="r.reachable !== false && session.availableProfiles.includes(r.pos_profile)"
                 type="button"
                 class="oe-go"
                 :disabled="busy"
@@ -102,6 +102,7 @@
               >
                 {{ t('Go to its Register page') }}
               </button>
+              <span v-else class="oe-ask">{{ t('Not open to you any more: ask a manager to close it.') }}</span>
             </div>
             <div class="choice-hint">
               {{
@@ -111,6 +112,9 @@
                     ? t('Remember to close each one when its shift ends.')
                     : t('Remember to close it when its shift ends.')
               }}
+            </div>
+            <div v-if="oneShiftBlocked" class="choice-hint">
+              {{ t("If you cannot close it, a manager can close it for you from that outlet's Register page.") }}
             </div>
           </div>
           <template v-if="session.availableProfiles.length > 1">
@@ -220,7 +224,11 @@ const canOpen = computed(() => session.permissions.open_register !== false)
 // (the server refuses it too, lumenpos.api.register).
 const router = useRouter()
 const others = computed(() => session.otherOpenRegisters || [])
-const oneShiftBlocked = computed(() => !!session.settings?.one_shift_per_user && others.value.length > 0)
+// Only a shift this person can still reach blocks; one at an outlet they
+// cannot reach any more is for a manager, and never locks them out.
+const oneShiftBlocked = computed(
+  () => !!session.settings?.one_shift_per_user && others.value.some((r) => r.reachable !== false)
+)
 async function goClose(profile) {
   await onSwitchOutlet(profile)
   router.push('/register')
@@ -389,6 +397,7 @@ function startPoll(sessionName) {
 }
 html[data-theme='dark'] .oe-go { color: #9fc0ff; background: rgba(47, 123, 255, 0.16); }
 .oe-block { border-color: var(--red); }
+.oe-ask { margin-inline-start: auto; font-size: 12px; font-weight: 600; opacity: 0.8; }
 .outlet-select {
   width: 100%;
   padding: 11px 12px;
