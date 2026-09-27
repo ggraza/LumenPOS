@@ -43,11 +43,16 @@ def balances_by_company(customer, company=None):
     from lumenpos import inter_company
 
     allowed = inter_company.companies_for(company)
-    rows = frappe.get_all(
-        "POS Store Credit Entry",
-        filters={"customer": customer},
-        fields=["company", "entry_type", "sum(amount) as total"],
-        group_by="company, entry_type",
+    # Plain SQL: Frappe 16 refuses sum() written as text in get_all fields.
+    rows = frappe.db.sql(
+        """
+        select company, entry_type, sum(amount) as total
+        from `tabPOS Store Credit Entry`
+        where customer = %s
+        group by company, entry_type
+        """,
+        customer,
+        as_dict=True,
     )
     out = {}
     for row in rows:

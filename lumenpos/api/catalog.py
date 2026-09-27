@@ -613,15 +613,22 @@ def recent_customers(pos_profile, limit=2000):
     sale_doctype = _table_doctype(pos_profile)
 
     ordered, seen = [], set()
-    # 1) recently transacted with this company (the customers you actually serve)
-    for r in frappe.get_all(
-        sale_doctype,
-        filters={"company": company, "docstatus": 1, "customer": ["is", "set"]},
-        fields=["customer", "max(posting_date) as last"],
-        group_by="customer",
-        order_by="last desc",
-        limit_page_length=limit,
-    ):
+    # 1) recently transacted with this company (the customers you actually
+    # serve). Plain SQL: Frappe 16 refuses max() written as text in get_all
+    # fields. `sale_doctype` is a fixed doctype name (_table_doctype).
+    recent = frappe.db.sql(  # nosemgrep
+        f"""
+        select customer, max(posting_date) as last
+        from `tab{sale_doctype}`
+        where company = %s and docstatus = 1 and ifnull(customer, '') != ''
+        group by customer
+        order by last desc
+        limit {int(limit)}
+        """,
+        company,
+        as_dict=True,
+    )
+    for r in recent:
         if r.customer and r.customer not in seen:
             seen.add(r.customer)
             ordered.append(r.customer)

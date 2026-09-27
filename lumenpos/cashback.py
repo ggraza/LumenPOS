@@ -144,8 +144,12 @@ def redeem(customer, amount, reference_invoice=None, company=None, reference_doc
             "remaining": [">", 0],
         },
         fields=["name", "remaining", "valid_from", "expiry_date", "company"],
-        order_by="ifnull(expiry_date, '2999-12-31') asc, creation asc",
+        order_by="creation asc",
     )
+    # Soonest to expire first, a row that never expires last, the oldest first
+    # on a tie (the sort is stable). Sorted here: Frappe 16 refuses ifnull()
+    # written as text in order_by.
+    live.sort(key=lambda r: getdate(r.expiry_date) if r.expiry_date else getdate("2999-12-31"))
     # This company's own cashback first, then the group's (soonest to expire
     # first within each): only another company's part needs settling.
     live.sort(key=lambda r: bool(company and r.company and r.company != company))

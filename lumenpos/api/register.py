@@ -521,15 +521,20 @@ def get_session_summary(session):
             )
 
     # Totals in the company currency, so a shift that sold in dollars and in
-    # dirhams adds up to one figure the books agree with.
-    totals = frappe.get_all(
-        sale_doctype,
-        filters={"lumenpos_session": doc.name, "docstatus": 1},
-        fields=[
-            "count(name) as sales_count",
-            "sum(base_grand_total) as total_sales",
-            "sum(base_discount_amount) as invoice_discounts",
-        ],
+    # dirhams adds up to one figure the books agree with. Plain SQL: Frappe 16
+    # refuses SQL functions written as text in get_all fields (the X-report
+    # failed with "SQL functions are not allowed as strings in SELECT"), and
+    # v13 has no other way to write them. `sale_doctype` is a fixed doctype
+    # name (_table_doctype), not user input.
+    totals = frappe.db.sql(  # nosemgrep
+        f"""
+        select count(name) as sales_count, sum(base_grand_total) as total_sales,
+               sum(base_discount_amount) as invoice_discounts
+        from `tab{sale_doctype}`
+        where lumenpos_session = %s and docstatus = 1
+        """,
+        doc.name,
+        as_dict=True,
     )
     # `sale_doctype` is a fixed doctype name (POS Invoice / Sales Invoice from
     # _table_doctype), not user input, and a table identifier can't be a bound

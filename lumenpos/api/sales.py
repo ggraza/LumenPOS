@@ -2075,11 +2075,17 @@ def get_returnable(invoice, pos_profile=None):
         pluck="name",
     )
     if return_names:
-        for row in frappe.get_all(
-            f"{doctype} Item",
-            filters={"parent": ["in", return_names]},
-            fields=["item_code", "sum(qty) as qty"],
-            group_by="item_code",
+        # Plain SQL: Frappe 16 refuses sum() written as text in get_all
+        # fields. `doctype` is POS Invoice or Sales Invoice, not user input.
+        for row in frappe.db.sql(  # nosemgrep
+            f"""
+            select item_code, sum(qty) as qty
+            from `tab{doctype} Item`
+            where parent in %(parents)s
+            group by item_code
+            """,
+            {"parents": tuple(return_names)},
+            as_dict=True,
         ):
             returned[row.item_code] = abs(flt(row.qty))
 
