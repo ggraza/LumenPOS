@@ -168,7 +168,7 @@
             <button class="btn btn-outline" :disabled="!movement.amount" @click="addMovement">{{ t('Add') }}</button>
           </div>
           <div v-for="(m, i) in summary?.cash_movements || []" :key="i" class="movement-row">
-            <span :class="m.movement_type === 'Cash In' ? 'in' : 'out'">{{ m.movement_type }}</span>
+            <span :class="m.movement_type === 'Cash In' ? 'in' : 'out'">{{ t(m.movement_type) }}</span>
             <span class="muted">{{ m.reason }}<template v-if="m.currency && m.currency !== local"> · {{ m.mode_of_payment }}</template></span>
             <span class="right">{{ money(m.amount, m.currency || local) }}</span>
           </div>
@@ -620,12 +620,13 @@ async function close() {
 .stat-value { font-size: 22px; font-weight: 800; margin-top: 2px; }
 .cash-form {
   display: grid;
-  grid-template-columns: 130px 130px 1fr auto;
+  /* The type picker grows to its longest option ("Entrée d'espèces"). */
+  grid-template-columns: minmax(130px, max-content) 130px 1fr auto;
   gap: 8px;
   margin-bottom: 12px;
 }
 /* With a drawer in another currency the form gains a drawer picker. */
-.cash-form.with-drawer { grid-template-columns: 120px minmax(150px, auto) 110px 1fr auto; }
+.cash-form.with-drawer { grid-template-columns: minmax(120px, max-content) minmax(150px, auto) 110px 1fr auto; }
 .movement-row {
   display: grid;
   grid-template-columns: 90px 1fr auto;
