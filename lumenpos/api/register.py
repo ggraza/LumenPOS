@@ -765,7 +765,7 @@ def close_register(session, counted, closing_note=None, expected_invoice_count=N
     # none could close, and each one held its outlet (and, with one open shift
     # per person, its cashier). When it fails, the counts are kept and the
     # shift closes all the same; its expected figures then come from its own
-    # POS Closing Entry at consolidation (_fill_expected_from_closing).
+    # POS Closing Entry at consolidation (_fill_pending_figures).
     try:
         summary = get_session_summary(session)
     except frappe.PermissionError:
@@ -822,7 +822,7 @@ def close_register(session, counted, closing_note=None, expected_invoice_count=N
 
     # AFTER the flip is committed: an email hiccup must never undo a close.
     # Without the figures there is no difference to report yet: the alert
-    # goes out once they are filled in (_fill_expected_from_closing).
+    # goes out once they are filled in (_fill_pending_figures).
     if summary:
         _maybe_alert_variance(doc)
 
@@ -992,7 +992,7 @@ def _reconcile_session(session_name, counted):
 
     closing = frappe.get_doc("POS Closing Entry", closing_name)
     if session.get("expected_pending"):
-        _fill_expected_from_closing(session.name, closing)
+        _fill_pending_figures(session.name, closing)
     if closing.status == "Submitted" and _opening_closed(opening_name):
         _mark_closed(session.name, closing_name)
         return closing_name
@@ -1007,18 +1007,24 @@ def _reconcile_session(session_name, counted):
     return closing_name
 
 
-def _fill_expected_from_closing(session_name, closing):
+def _fill_pending_figures(session_name, closing=None, quiet=False):
     """A shift closed while its figures could not be worked out (close_register)
-    takes them from its POS Closing Entry, which is built from the shift's own
-    invoices, float and cash movements: what each drawer should have held, the
-    difference from what was counted, and the shift's totals. Then the variance
-    alert the close could not send. Best effort: until it succeeds the shift
-    keeps saying its figures are pending, and every retry tries again."""
+    gets them now: from its POS Closing Entry, which is built from the shift's
+    own invoices, float and cash movements, or, for a shift without one (a
+    Sales Invoice outlet's cash shift), from its own figures once they can be
+    worked out again. What each drawer should have held, the difference from
+    what was counted, the shift's totals, then the variance alert the close
+    could not send. Best effort: until it succeeds the shift keeps saying its
+    figures are pending, and the self-healer tries again (fill_pending_figures).
+    `quiet` keeps that periodic retry out of the Error Log."""
     from lumenpos.api.sales import _table_doctype
 
     try:
         doc = frappe.get_doc("POS Register Session", session_name)
-        recon = {r.mode_of_payment: flt(r.expected_amount) for r in closing.get("payment_reconciliation") or []}
+        if closing:
+            recon = {r.mode_of_payment: flt(r.expected_amount) for r in closing.get("payment_reconciliation") or []}
+        else:
+            recon = {r["mode_of_payment"]: flt(r["expected_amount"]) for r in get_session_summary(session_name)["expected"]}
         counted_modes = set()
         for row in doc.get("payment_counts") or []:
             counted_modes.add(row.mode_of_payment)
@@ -1044,9 +1050,34 @@ def _fill_expected_from_closing(session_name, closing):
         frappe.db.commit()  # nosemgrep
     except Exception:
         frappe.db.rollback()
-        frappe.log_error(title="LumenPOS: shift figures from its closing entry", message=frappe.get_traceback())
+        if not quiet:
+            frappe.log_error(title="LumenPOS: filling in a closed shift's figures", message=frappe.get_traceback())
         return
     _maybe_alert_variance(doc)
+
+
+def fill_pending_figures():
+    """Scheduled with the self-healer: shifts of the last week that closed with
+    their figures still pending get another try (see _fill_pending_figures)."""
+    if not _has_expected_pending():
+        return
+    rows = frappe.get_all(
+        "POS Register Session",
+        filters={
+            "status": "Closed",
+            "expected_pending": 1,
+            "closed_at": [">=", frappe.utils.add_days(now_datetime(), -7)],
+        },
+        fields=["name", "pos_closing_entry"],
+        limit_page_length=20,
+    )
+    for row in rows:
+        closing = None
+        if row.pos_closing_entry:
+            closing = frappe.get_doc("POS Closing Entry", row.pos_closing_entry)
+            if closing.docstatus != 1:
+                continue
+        _fill_pending_figures(row.name, closing, quiet=True)
 
 
 def _consolidate_now(closing):
@@ -1356,6 +1387,10 @@ def reconcile_stuck_closings():
             frappe.log_error(
                 title="LumenPOS closing reconcile failed", message=frappe.get_traceback()
             )
+    try:
+        fill_pending_figures()
+    except Exception:
+        frappe.db.rollback()
     _alert_orphan_invoices()
 
 

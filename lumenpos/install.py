@@ -34,6 +34,19 @@ CUSTOMER_GRANTS = {
     "Customer Group": ["read"],
     "Territory": ["read"],
 }
+# What ERPNext itself checks, AS the user, while a sale is made, so a user
+# holding only a LumenPOS role can sell on every version (found by suite 76 on
+# 2026-09-28: v13 and v14 need none of it, v15 refused Account then Item, v16
+# Account, Item and POS Profile). ERPNext 15 and 16 want at least select on the
+# customer's receivable account (get_party_account), and read on the Item
+# (get_item_details) and, on 16, on the POS Profile. Select on Account, not
+# read: the account's name in a link, never its record, the way ERPNext 16
+# itself grants it to a dozen roles.
+SALE_GRANTS = {
+    "Account": ["select"],
+    "Item": ["read"],
+    "POS Profile": ["read"],
+}
 CORE_GRANTS = {
     "LumenPOS Cashier": {
         "POS Invoice": ["read", "write", "create", "submit", "print"],
@@ -42,6 +55,7 @@ CORE_GRANTS = {
         "POS Invoice Merge Log": ["read", "write", "create", "submit"],
         "Sales Invoice": ["read", "write", "create", "submit"],
         **CUSTOMER_GRANTS,
+        **SALE_GRANTS,
     },
     "LumenPOS Manager": {
         "POS Invoice": ["read", "write", "create", "submit", "cancel", "amend", "print", "delete"],
@@ -50,6 +64,7 @@ CORE_GRANTS = {
         "POS Invoice Merge Log": ["read", "write", "create", "submit", "cancel"],
         "Sales Invoice": ["read", "write", "create", "submit", "cancel", "amend", "print"],
         **CUSTOMER_GRANTS,
+        **SALE_GRANTS,
     },
 }
 
@@ -574,8 +589,17 @@ def grant_core_permissions():
             if not frappe.db.exists("DocType", doctype):
                 continue
             # Ensure a permlevel-0 permission row exists for this role, then turn
-            # on each needed action. add_permission is a no-op if it's there.
-            add_permission(doctype, role, 0)
+            # on each needed action. add_permission is a no-op if it's there,
+            # and a new row starts with the grant's first right (Frappe's
+            # default is read, which Account must not get).
+            existed = frappe.db.exists(
+                "Custom DocPerm", {"parent": doctype, "role": role, "permlevel": 0, "if_owner": 0}
+            )
+            add_permission(doctype, role, 0, ptypes[0])
+            # Custom DocPerm ticks read by default: a new row for a grant
+            # without read (Account: select only) must not keep it.
+            if not existed and "read" not in ptypes:
+                update_permission_property(doctype, role, 0, "read", 0, validate=False)
             for ptype in ptypes:
                 try:
                     update_permission_property(doctype, role, 0, ptype, 1, validate=False)
