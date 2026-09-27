@@ -608,37 +608,44 @@ def _check_serial(item_code, serial_no, warehouse):
 
 
 def serials_held(item_code, warehouse=None):
-    """Serials ERPNext holds for POS Invoices, as {serial: (invoice, came_back)}.
+    """Serials the till must not sell now, as {serial: (invoice, came_back)}.
 
     ERPNext moves no stock until the shift close consolidates a POS Invoice, so
-    a serial sold on one still reads Active in the warehouse. Selling it again
-    fails at submit (ERPNext 13 and 14 name the other invoice, 15 and 16 say the
-    serial "is not present in the warehouse") or, where nothing checks, at the
-    close. The till asks the same question ERPNext asks
-    (erpnext_compat.pos_reserved_serials) before the cashier gets that far, and
-    names the sale from the serial_no text LumenPOS writes on every line.
-    came_back is True when the last POS invoice to carry the serial is its
-    return: ERPNext 15 and 16 keep such a serial until the close books the
-    sale."""
-    reserved = set(erpnext_compat.pos_reserved_serials(item_code, warehouse))
-    if not reserved:
-        return {}
+    a serial sold on one still reads Active in the warehouse. Two readings are
+    joined:
+
+    1. The unconsolidated window, read from the serial_no text LumenPOS writes
+       on every line: a sale holds the serial, a later POS return frees it.
+       ERPNext 13 and 14 do not see this themselves: get_pos_reserved_serial_nos
+       subtracts the SET of every serial ever returned, so once a serial came
+       back in any old return, a second sale of it went through and failed only
+       at the close.
+    2. What ERPNext itself holds by its rule for the version
+       (erpnext_compat.pos_reserved_serials), so the till is never looser than
+       the submit that follows. ERPNext 15 and 16 keep a serial even after a
+       same-shift return (came_back), until the close books the sale.
+    """
     rows = frappe.db.sql(
         """select pi.name, pi.is_return, pii.serial_no
             from `tabPOS Invoice` pi
             join `tabPOS Invoice Item` pii on pii.parent = pi.name
-            where pi.docstatus = 1 and pii.item_code = %(item)s
-              and ifnull(pii.serial_no, '') != ''
+            where pi.docstatus = 1 and ifnull(pi.consolidated_invoice, '') = ''
+              and pii.item_code = %(item)s and ifnull(pii.serial_no, '') != ''
+              and (%(warehouse)s is null or pii.warehouse = %(warehouse)s)
             order by pi.posting_date, pi.posting_time, pi.creation""",
-        {"item": item_code},
+        {"item": item_code, "warehouse": warehouse or None},
         as_dict=True,
     )
-    held = {serial: (None, False) for serial in reserved}
+    window = {}
     for row in rows:
         for serial in (row.serial_no or "").splitlines():
             serial = serial.strip()
-            if serial in reserved:
-                held[serial] = (row.name, bool(row.is_return))
+            if serial:
+                window[serial] = (row.name, bool(row.is_return))
+    held = {serial: last for serial, last in window.items() if not last[1]}
+    for serial in erpnext_compat.pos_reserved_serials(item_code, warehouse):
+        if serial not in held:
+            held[serial] = window.get(serial) or (None, False)
     return held
 
 
