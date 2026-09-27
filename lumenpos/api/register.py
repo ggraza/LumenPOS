@@ -811,9 +811,19 @@ def close_register(session, counted, closing_note=None, expected_invoice_count=N
     doc.closing_error = None
     doc.closing_note = closing_note
     doc.expected_pending = 0 if summary else 1
-    doc.total_sales = summary["total_sales"] if summary else 0
-    doc.total_discounts = summary["total_discounts"] if summary else 0
-    doc.sales_count = summary["sales_count"] if summary else 0
+    totals = summary
+    if not summary:
+        # The sales themselves are counted on their own, so the history never
+        # says "0 sales" for a shift that sold while its drawers wait.
+        try:
+            from lumenpos.api.sales import _table_doctype
+
+            totals = _session_totals(doc.name, _table_doctype(doc.pos_profile))
+        except Exception:
+            totals = {}
+    doc.total_sales = flt(totals.get("total_sales"))
+    doc.total_discounts = flt(totals.get("total_discounts"))
+    doc.sales_count = cint(totals.get("sales_count"))
     doc.save()
     # Persist the "Closing" state NOW: from here the shift is neither sellable
     # nor resumable, whatever happens to the consolidation next. Intentional, 

@@ -104,7 +104,7 @@
               </button>
               <span v-else class="oe-ask">{{ t('Not open to you any more: ask a manager to close it.') }}</span>
             </div>
-            <div class="choice-hint">
+            <div v-if="oneShiftBlocked || anyReachable" class="choice-hint">
               {{
                 oneShiftBlocked
                   ? t('This shop allows one open shift per person at a time. Close it, then open this one.')
@@ -226,9 +226,8 @@ const router = useRouter()
 const others = computed(() => session.otherOpenRegisters || [])
 // Only a shift this person can still reach blocks; one at an outlet they
 // cannot reach any more is for a manager, and never locks them out.
-const oneShiftBlocked = computed(
-  () => !!session.settings?.one_shift_per_user && others.value.some((r) => r.reachable !== false)
-)
+const anyReachable = computed(() => others.value.some((r) => r.reachable !== false))
+const oneShiftBlocked = computed(() => !!session.settings?.one_shift_per_user && anyReachable.value)
 async function goClose(profile) {
   await onSwitchOutlet(profile)
   router.push('/register')
@@ -397,7 +396,7 @@ function startPoll(sessionName) {
 }
 html[data-theme='dark'] .oe-go { color: #9fc0ff; background: rgba(47, 123, 255, 0.16); }
 .oe-block { border-color: var(--red); }
-.oe-ask { margin-inline-start: auto; font-size: 12px; font-weight: 600; opacity: 0.8; }
+.oe-ask { flex-basis: 100%; font-size: 12px; font-weight: 600; opacity: 0.85; }
 .outlet-select {
   width: 100%;
   padding: 11px 12px;
