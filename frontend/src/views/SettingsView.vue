@@ -1536,6 +1536,32 @@
         </template>
       </div>
 
+      <!-- Languages -->
+      <div class="sec-card" v-show="generalSection === 'languages'">
+        <div class="sec-title"><Icon name="globe" /> {{ t('Languages') }}</div>
+        <p class="sec-note">{{ t('The languages a cashier can pick from the top bar. The server answers in the language on the screen, ERPNext\'s own messages included.') }}</p>
+        <div class="setting-list">
+          <label v-for="l in LANGUAGES" :key="l.code" class="setting-row">
+            <input
+              type="checkbox"
+              class="setting-toggle"
+              :checked="languageOn(l.code)"
+              :disabled="l.code === 'en'"
+              @change="toggleLanguage(l.code, $event.target.checked)"
+            />
+            <span class="setting-text">
+              <span class="setting-title"><bdi :lang="l.code">{{ l.name }}</bdi></span>
+              <span v-if="l.code === 'en'" class="setting-desc">{{ t('Always offered: a text not translated yet shows in English.') }}</span>
+              <!-- The language's name in the language of the screen, when it differs. -->
+              <span v-else-if="t('lang:' + l.code) !== l.name" class="setting-desc">{{ t('lang:' + l.code) }}</span>
+            </span>
+          </label>
+        </div>
+        <p class="muted hint-row" style="margin-top: 12px">
+          {{ t('While every language is ticked, a language added by a later update is offered by itself.') }}
+        </p>
+      </div>
+
       <!-- Receipt -->
       <div class="sec-card" v-show="generalSection === 'receipt'">
         <div class="sec-title"><Icon name="image" /> {{ t('Receipt') }}</div>
@@ -2174,7 +2200,7 @@ import LinkPicker from '../components/LinkPicker.vue'
 import ScopePicker from '../components/ScopePicker.vue'
 import PriceListEditor from '../components/PriceListEditor.vue'
 import ReceiptView from '../components/ReceiptView.vue'
-import { t } from '../i18n'
+import { t, LANGUAGES } from '../i18n'
 
 const session = useSessionStore()
 const catalog = useCatalogStore()
@@ -2279,6 +2305,7 @@ function addCapabilityRule() {
   generalForm.value.capability_rules.push({ capability: 'Make returns', role: '', user: '' })
 }
 const generalForm = ref({
+  till_languages: [],
   delivery_apps: [],
   payment_method_rules: [],
   discount_limit_percent: 0,
@@ -2369,10 +2396,28 @@ const generalSections = [
   { key: 'returns', label: 'Returns and refunds', icon: 'refresh' },
   { key: 'holds', label: 'Holds and deposits', icon: 'bookmark' },
   { key: 'receipt', label: 'Receipt', icon: 'image' },
+  { key: 'languages', label: 'Languages', icon: 'globe' },
   { key: 'money', label: 'Accounts and gift cards', icon: 'bank' },
   { key: 'approvals', label: 'Approvals and access', icon: 'shield' },
 ]
 const generalSection = ref('features')
+
+// ---- languages at the till (lumenpos.languages) ----
+// till_languages [] means every language, so one a later update adds shows up
+// by itself; ticking everything goes back to [].
+const languageOn = (code) =>
+  code === 'en' ||
+  !generalForm.value.till_languages?.length ||
+  generalForm.value.till_languages.includes(code)
+function toggleLanguage(code, on) {
+  if (code === 'en') return
+  let list = generalForm.value.till_languages?.length
+    ? [...generalForm.value.till_languages]
+    : LANGUAGES.map((l) => l.code)
+  list = on ? [...new Set([...list, code])] : list.filter((c) => c !== code)
+  if (!list.includes('en')) list.unshift('en')
+  generalForm.value.till_languages = LANGUAGES.every((l) => list.includes(l.code)) ? [] : list
+}
 
 // ---- customer balances across companies (lumenpos.inter_company) ----
 const BALANCE_MODES = ['Shared by the group', 'Separate per company']
@@ -2845,6 +2890,7 @@ async function load() {
   loadFieldOptions('POS Profile')
   loadRateRows(info)
   generalForm.value = {
+    till_languages: [...(info.till_languages || [])],
     delivery_apps: JSON.parse(JSON.stringify(info.delivery_apps || [])),
     payment_method_rules: JSON.parse(JSON.stringify(info.payment_method_rules || [])),
     discount_limit_percent: info.discount_limit_percent || 0,
@@ -4040,14 +4086,17 @@ html[data-theme='dark'] .status-pill.expired { background: rgba(255, 120, 120, 0
 .sec-title {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   font-size: 14px;
   font-weight: 500;
   color: var(--text);
   margin-bottom: 14px;
 }
 .sec-title > span:first-child { display: inline-flex; align-items: center; gap: 8px; }
+/* The title sits beside its icon; a control after it (a tick box, a button)
+   goes to the far end. With space-between on the whole row, a card whose
+   title is just an icon and text had them at opposite ends. */
+.sec-title > :not(:first-child):last-child { margin-inline-start: auto; }
 .sec-title .icon { color: var(--brand); }
 button.sec-title.collapsible {
   width: 100%;

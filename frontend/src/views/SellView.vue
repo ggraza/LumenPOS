@@ -337,6 +337,13 @@ async function onSearchEnter() {
         catalog.clearSearch()
         return
       }
+      // A serial the server knows but cannot sell (already sold on a sale the
+      // shift close has not booked yet): say why instead of "not found".
+      if (result.message) {
+        session.notify(result.message, true)
+        catalog.clearSearch()
+        return
+      }
     } catch {
       /* fall back to the grid below */
     }

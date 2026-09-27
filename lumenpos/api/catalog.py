@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
+from lumenpos import erpnext_compat
 from lumenpos.price_books import effective_prices, resolve_price_list, standard_prices
 
 
@@ -234,6 +235,9 @@ def resolve_scan(pos_profile, code, customer_group=None, app_type=None):
         if sn and sn.status == "Active" and (
             not profile.warehouse or sn.warehouse == profile.warehouse
         ):
+            held = serials_held(sn.item_code, profile.warehouse).get(sn.name)
+            if held:
+                return {"found": False, "message": _held_message(sn.name, held)}
             item_code = sn.item_code
             serial = sn.name
     if not item_code:
@@ -575,24 +579,80 @@ def validate_serial(pos_profile, item_code, serial_no):
 
 
 def _check_serial(item_code, serial_no, warehouse):
+    # The cashier reads these at the till, so they go through _() like every
+    # other message and come back in the till's language.
     serial_no = (serial_no or "").strip()
     if not serial_no:
-        return {"valid": False, "message": "Scan or type a serial number"}
+        return {"valid": False, "message": _("Scan or type a serial number")}
     sn = frappe.db.get_value(
         "Serial No", serial_no, ["name", "item_code", "status", "warehouse"], as_dict=True
     )
     if not sn:
-        return {"valid": False, "message": f"Serial {serial_no} does not exist"}
+        return {"valid": False, "message": _("Serial {0} does not exist").format(serial_no)}
     if sn.item_code != item_code:
-        return {"valid": False, "message": f"Serial {serial_no} belongs to {sn.item_code}"}
+        return {"valid": False, "message": _("Serial {0} belongs to {1}").format(serial_no, sn.item_code)}
     if sn.status != "Active":
-        return {"valid": False, "message": f"Serial {serial_no} is not in stock ({sn.status})"}
+        return {
+            "valid": False,
+            "message": _("Serial {0} is not in stock ({1})").format(serial_no, _(sn.status or "")),
+        }
     if warehouse and sn.warehouse != warehouse:
         return {
             "valid": False,
-            "message": f"Serial {serial_no} is in {sn.warehouse}, not this register's warehouse",
+            "message": _("Serial {0} is in {1}, not this register's warehouse").format(serial_no, sn.warehouse),
         }
+    held = serials_held(item_code, warehouse).get(sn.name)
+    if held:
+        return {"valid": False, "message": _held_message(sn.name, held)}
     return {"valid": True, "message": "OK", "serial_no": sn.name}
+
+
+def serials_held(item_code, warehouse=None):
+    """Serials ERPNext holds for POS Invoices, as {serial: (invoice, came_back)}.
+
+    ERPNext moves no stock until the shift close consolidates a POS Invoice, so
+    a serial sold on one still reads Active in the warehouse. Selling it again
+    fails at submit (ERPNext 13 and 14 name the other invoice, 15 and 16 say the
+    serial "is not present in the warehouse") or, where nothing checks, at the
+    close. The till asks the same question ERPNext asks
+    (erpnext_compat.pos_reserved_serials) before the cashier gets that far, and
+    names the sale from the serial_no text LumenPOS writes on every line.
+    came_back is True when the last POS invoice to carry the serial is its
+    return: ERPNext 15 and 16 keep such a serial until the close books the
+    sale."""
+    reserved = set(erpnext_compat.pos_reserved_serials(item_code, warehouse))
+    if not reserved:
+        return {}
+    rows = frappe.db.sql(
+        """select pi.name, pi.is_return, pii.serial_no
+            from `tabPOS Invoice` pi
+            join `tabPOS Invoice Item` pii on pii.parent = pi.name
+            where pi.docstatus = 1 and pii.item_code = %(item)s
+              and ifnull(pii.serial_no, '') != ''
+            order by pi.posting_date, pi.posting_time, pi.creation""",
+        {"item": item_code},
+        as_dict=True,
+    )
+    held = {serial: (None, False) for serial in reserved}
+    for row in rows:
+        for serial in (row.serial_no or "").splitlines():
+            serial = serial.strip()
+            if serial in reserved:
+                held[serial] = (row.name, bool(row.is_return))
+    return held
+
+
+def _held_message(serial_no, held):
+    invoice, came_back = held
+    if not invoice:
+        return _("Serial {0} is held by a sale the shift close has not booked yet").format(serial_no)
+    if came_back:
+        return _("Serial {0} came back on {1}, and ERPNext holds it until the shift close books that sale").format(
+            serial_no, invoice
+        )
+    return _("Serial {0} is already sold on {1}, which the shift close has not booked yet").format(
+        serial_no, invoice
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 /* Copyright (c) 2026 Lumen Solutions
    SPDX-License-Identifier: AGPL-3.0-only
    "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap');
 
 /* LumenPOS design tokens, the Lumen brand identity.
    Primary blue #1463FF (light) / #2F7BFF (dark); type: Plus Jakarta Sans. */
@@ -30,6 +30,11 @@
   --shadow-md: 0 8px 24px rgba(16, 24, 40, 0.08), 0 2px 6px rgba(16, 24, 40, 0.04);
   --shadow-brand: 0 12px 30px rgba(20, 99, 255, 0.28);
   --font-ar: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
+  /* Plus Jakarta Sans has no Thai and no Chinese: Latin text keeps it, the
+     rest falls to IBM Plex Sans Thai (the Arabic's family, fetched only when a
+     Thai glyph shows) or to the system's own Chinese font. */
+  --font-th: 'Plus Jakarta Sans', 'IBM Plex Sans Thai', 'Leelawadee UI', Thonburi, sans-serif;
+  --font-zh: 'Plus Jakarta Sans', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Hiragino Sans GB', sans-serif;
   --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 }
@@ -228,6 +233,24 @@ html[dir='rtl'] button {
 }
 /* Arabic sits lower and needs more room between lines than Latin does. */
 html[dir='rtl'] body { line-height: 1.6; }
+
+/* Thai and Chinese, the same treatment. */
+html[lang='th'] body,
+html[lang='th'] input,
+html[lang='th'] select,
+html[lang='th'] textarea,
+html[lang='th'] button {
+  font-family: var(--font-th);
+}
+html[lang='zh'] body,
+html[lang='zh'] input,
+html[lang='zh'] select,
+html[lang='zh'] textarea,
+html[lang='zh'] button {
+  font-family: var(--font-zh);
+}
+html[lang='th'] body,
+html[lang='zh'] body { line-height: 1.6; }
 
 html[dir='rtl'] .rail-item {
   border-left: 3px solid transparent;

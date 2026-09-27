@@ -17,6 +17,7 @@ import {
   pruneSaleLog,
 } from '../offline'
 import { syncFromErp } from '../theme'
+import { setOffered } from '../i18n'
 import { useCatalogStore } from './catalog'
 
 export const useSessionStore = defineStore('session', {
@@ -242,6 +243,7 @@ export const useSessionStore = defineStore('session', {
       this.allowNegativeStock = Boolean(data.allow_negative_stock)
       this.multiCurrency = data.multi_currency || { enabled: 0, currencies: [] }
       this.settings = data.settings || { delivery_apps: [], discount_limit_percent: 0 }
+      setOffered(this.settings.till_languages)
       this.bundles = data.bundles || []
       this.permissions = data.permissions || {}
       this.pendingClosing = data.pending_closing || null

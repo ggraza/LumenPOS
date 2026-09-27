@@ -35,13 +35,40 @@
           >
             <Icon name="shield" /> {{ t('Lock') }}
           </button>
+          <!-- Two languages: one tap swaps them. More: a short list. -->
           <button
+            v-if="offeredLanguages.length === 2"
             class="lang-pill"
             :title="t('Language')"
-            @click="toggleLocale()"
+            :lang="otherLanguage.code"
+            @click="setLocale(otherLanguage.code)"
           >
-            {{ locale === 'ar' ? 'English' : 'العربية' }}
+            {{ otherLanguage.name }}
           </button>
+          <div v-else-if="offeredLanguages.length > 2" ref="langMenu" class="lang-menu">
+            <button
+              class="lang-pill"
+              :title="t('Language')"
+              aria-haspopup="listbox"
+              :aria-expanded="langOpen ? 'true' : 'false'"
+              @click="langOpen = !langOpen"
+            >
+              <Icon name="globe" /> {{ currentLanguage.name }} ▾
+            </button>
+            <div v-if="langOpen" class="lang-list" role="listbox" :aria-label="t('Language')">
+              <button
+                v-for="l in offeredLanguages"
+                :key="l.code"
+                class="lang-option"
+                :class="{ active: l.code === locale }"
+                role="option"
+                :aria-selected="l.code === locale ? 'true' : 'false'"
+                @click="pickLanguage(l.code)"
+              >
+                <bdi :lang="l.code">{{ l.name }}</bdi>
+              </button>
+            </div>
+          </div>
           <button
             v-if="session.offline"
             class="offline-pill"
@@ -121,7 +148,7 @@ import { useCartStore } from './stores/cart'
 import { money } from './format'
 import { publishCart, onDisplayRequest } from './customerDisplay'
 import { ensurePersistentStorage } from './offline'
-import { t, locale, toggleLocale } from './i18n'
+import { t, locale, setLocale, offeredLanguages, LANGUAGES } from './i18n'
 import Icon from './components/Icon.vue'
 import NavRail from './components/NavRail.vue'
 import OpenRegisterOverlay from './components/OpenRegisterOverlay.vue'
@@ -150,6 +177,30 @@ async function switchOutlet(event) {
 }
 const route = useRoute()
 const isDisplay = computed(() => route.path === '/display')
+
+// The language control in the top bar.
+const langOpen = ref(false)
+const langMenu = ref(null)
+const currentLanguage = computed(() => LANGUAGES.find((l) => l.code === locale.value) || LANGUAGES[0])
+const otherLanguage = computed(
+  () => offeredLanguages.value.find((l) => l.code !== locale.value) || LANGUAGES[0]
+)
+async function pickLanguage(code) {
+  langOpen.value = false
+  await setLocale(code)
+}
+function closeLangMenu(event) {
+  if (!langOpen.value) return
+  if (event.type === 'keydown' && event.key !== 'Escape') return
+  if (event.type === 'pointerdown' && langMenu.value && langMenu.value.contains(event.target)) return
+  langOpen.value = false
+}
+window.addEventListener('pointerdown', closeLangMenu)
+window.addEventListener('keydown', closeLangMenu)
+onBeforeUnmount(() => {
+  window.removeEventListener('pointerdown', closeLangMenu)
+  window.removeEventListener('keydown', closeLangMenu)
+})
 
 // Live clock + "shift open" elapsed timer for the top bar (ticks every second).
 const now = ref(Date.now())
@@ -365,6 +416,41 @@ function setupAutoLock() {
   cursor: pointer;
 }
 .lang-pill:hover { background: rgba(255, 255, 255, 0.26); }
+.lang-menu { position: relative; }
+.lang-menu .lang-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.lang-list {
+  position: absolute;
+  top: calc(100% + 8px);
+  inset-inline-end: 0;
+  z-index: 60;
+  min-width: 170px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lang-option {
+  text-align: start;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--text);
+  background: transparent;
+  cursor: pointer;
+}
+.lang-option:hover { background: var(--surface-2); }
+.lang-option.active { background: var(--brand); color: #fff; }
 .offline-pill {
   font-size: 11.5px;
   font-weight: 700;

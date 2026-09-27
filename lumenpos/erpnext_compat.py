@@ -200,6 +200,40 @@ def closing_invoice_table():
     return "pos_invoices" if meta.has_field("pos_invoices") else "pos_transactions"
 
 
+def pos_reserved_serials(item_code, warehouse=None):
+    """The serials ERPNext itself holds for POS Invoices, by the rule of this
+    version, so the till refuses exactly what ERPNext would refuse at submit.
+
+    ERPNext 15 and 16 (Serial and Batch Bundle): get_reserved_serial_nos_for_pos,
+    every submitted POS Invoice not consolidated yet, less what a POS return
+    gave back. It counts a sale's serial once from its bundle AND once from its
+    serial_no text, while a return gives it back only once, so a line that
+    carries both (use_serial_batch_fields, as every LumenPOS sale does) stays
+    held after a return in the same shift, until the shift close consolidates
+    the sale. ERPNext 13 and 14: get_pos_reserved_serial_nos, every submitted POS
+    Invoice in the warehouse less its POS returns."""
+    try:
+        from erpnext.stock.doctype.serial_and_batch_bundle.serial_and_batch_bundle import (
+            get_reserved_serial_nos_for_pos,
+        )
+    except ImportError:
+        get_reserved_serial_nos_for_pos = None
+    if get_reserved_serial_nos_for_pos:
+        return list(
+            get_reserved_serial_nos_for_pos(
+                frappe._dict(item_code=item_code, warehouse=warehouse, ignore_voucher_nos=[""])
+            )
+            or []
+        )
+    try:
+        from erpnext.stock.doctype.serial_no.serial_no import get_pos_reserved_serial_nos
+    except Exception as exc:  # pragma: no cover - version guard
+        _fail("reserved serial numbers", exc)
+    if not warehouse:
+        return []
+    return list(get_pos_reserved_serial_nos({"item_code": item_code, "warehouse": warehouse}) or [])
+
+
 def make_return_doc(doctype, name):
     """ERPNext's credit-note builder."""
     try:

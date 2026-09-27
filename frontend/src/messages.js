@@ -1432,7 +1432,7 @@ const currencies = {
     "عند الإيقاف: يرفض الصندوق العميل المفوتر بعملة أخرى ويوضح السبب.",
   "Currencies the till sells in": "العملات التي يبيع بها الصندوق",
   "Each currency gets, on saving, a walk-in customer billed in it, a receivable account and a cash drawer (\"Cash USD\") on every outlet. Change is given in the local currency from the main drawer, or, for a currency set to give change in itself, from its own drawer. An outlet whose POS Profile names its own Account for Change Amount keeps it.":
-    "عند الحفظ تحصل كل عملة على عميل نقدي مفوتر بها، وحساب مدينين، ودرج نقد (\"Cash USD\") في كل فرع. الباقي يرد بالعملة المحلية من الدرج الرئيسي، أو بالعملة نفسها من درجها إذا فعلت لها إرجاع الباقي. الفرع اللي يحدد ملف نقطة البيع حقه حساب الباقي يبقى عليه.",
+    "عند الحفظ تحصل كل عملة على عميل نقدي مفوتر بها، وحساب مدينين، ودرج نقد (\"Cash USD\") في كل فرع. يرد الباقي بالعملة المحلية من الدرج الرئيسي، أو بالعملة نفسها من درجها إذا فعلت لها إرجاع الباقي. الفرع الذي يحدد ملف نقطة البيع الخاص به حسابا للباقي يبقى على حسابه.",
   "Give change in {currency}": "إرجاع الباقي بـ {currency}",
   "Give change in this currency": "إرجاع الباقي بهذه العملة",
   "From the {currency} drawer": "من درج {currency}",
@@ -1550,11 +1550,37 @@ const prefixedEn = {
   'day:friday': 'Fri',
   'day:saturday': 'Sat',
   'day:sunday': 'Sun',
+  // Each language named in the language of the screen (Settings, Languages).
+  'lang:en': 'English',
+  'lang:ar': 'Arabic',
+  'lang:es': 'Spanish',
+  'lang:de': 'German',
+  'lang:zh': 'Chinese (Simplified)',
+  'lang:fr': 'French',
+  'lang:th': 'Thai',
+  'lang:id': 'Indonesian',
+  'lang:vi': 'Vietnamese',
 }
 const prefixedAr = {
+  // Settings, General, Languages (0.53.0)
+  Languages: 'اللغات',
+  "The languages a cashier can pick from the top bar. The server answers in the language on the screen, ERPNext's own messages included.":
+    'اللغات التي يستطيع الكاشير اختيارها من الشريط العلوي. يرد الخادم بلغة الشاشة نفسها، بما في ذلك رسائل ERPNext.',
+  'Always offered: a text not translated yet shows in English.': 'متاحة دائما: أي نص لم يترجم بعد يظهر بالإنجليزية.',
+  'While every language is ticked, a language added by a later update is offered by itself.':
+    'ما دامت كل اللغات محددة، تتاح تلقائيا أي لغة يضيفها تحديث لاحق.',
+  'lang:en': 'الإنجليزية',
+  'lang:ar': 'العربية',
+  'lang:es': 'الإسبانية',
+  'lang:de': 'الألمانية',
+  'lang:zh': 'الصينية المبسطة',
+  'lang:fr': 'الفرنسية',
+  'lang:th': 'التايلاندية',
+  'lang:id': 'الإندونيسية',
+  'lang:vi': 'الفيتنامية',
   "Update exchange rates automatically": "تحديث أسعار الصرف تلقائيا",
   "Once a day, from ExchangeRate-API (free), for the currencies set to Automatic below. The others keep the rate you set. A rate you type for today always wins.":
-    "مرة يوميا من ExchangeRate-API مجانا، للعملات المضبوطة على تلقائي تحت. العملات الباقية تبقى على السعر اللي تضبطه، والسعر اللي تكتبه لليوم يغلب دائما.",
+    "مرة يوميا من ExchangeRate-API مجانا، للعملات المضبوطة على تلقائي أدناه. تبقى العملات الأخرى على السعر الذي تحدده، والسعر الذي تكتبه لليوم هو المعتمد دائما.",
   "Fixed rate": "سعر ثابت",
   "Automatic rate": "سعر تلقائي",
   "Margin": "الهامش",
@@ -1563,7 +1589,7 @@ const prefixedAr = {
   "Last update failed: {reason}. The till keeps the last rate.": "فشل آخر تحديث: {reason}. الكاشير يبقى على آخر سعر.",
   "Published {published}, in force {used}, updated {at}": "المنشور {published}، المعتمد {used}، آخر تحديث {at}",
   "a rate typed for today is in force": "المعتمد سعر مكتوب لليوم",
-  "For a currency set to Automatic, a rate you save here counts for today only.": "للعملة المضبوطة على تلقائي، السعر اللي تحفظه هنا يسري لليوم فقط.",
+  "For a currency set to Automatic, a rate you save here counts for today only.": "للعملة المضبوطة على تلقائي، السعر الذي تحفظه هنا يسري لليوم فقط.",
   "Automatic": "تلقائي",
   "Uses the saved settings.": "يعتمد على الإعدادات المحفوظة.",
   "Updating…": "جار التحديث…",

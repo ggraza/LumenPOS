@@ -1,6 +1,8 @@
 // Copyright (c) 2026 Lumen Solutions
 // SPDX-License-Identifier: AGPL-3.0-only
 // "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+import { locale } from './i18n'
+
 export class ApiError extends Error {}
 
 // The network itself failed (no connection / server unreachable), distinct
@@ -58,7 +60,11 @@ export async function call(method, args = {}, options = {}) {
         Accept: 'application/json',
         'X-Frappe-CSRF-Token': window.csrf_token || '',
       },
-      body: JSON.stringify(args),
+      // _lang is Frappe's own request language: the server's messages (and
+      // ERPNext's) come back in the language on the screen, whatever the
+      // user's language in the desk. No LumenPOS method takes **kwargs, so
+      // it never reaches one as an argument.
+      body: JSON.stringify({ ...args, _lang: locale.value }),
       signal: controller.signal,
     })
   } catch {

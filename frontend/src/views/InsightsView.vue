@@ -67,12 +67,16 @@ const ChartMark = () =>
     }),
   ])
 
+// Lumen Reports builds its dashboard in English or Arabic. A till in any other
+// language gets the English one.
+const reportsLang = computed(() => (locale.value === 'ar' ? 'ar' : 'en'))
+
 // When Lumen Reports says the current user may view it, show the embedded
 // dashboard. Its language and theme follow the till.
 const board = computed(() => {
   const lr = info.value && info.value.lr
   if (!lr || !lr.can_view || lr.reason) return null
-  const q = `?lang=${locale.value}&theme=${theme.value === 'dark' ? 'dark' : 'light'}`
+  const q = `?lang=${reportsLang.value}&theme=${theme.value === 'dark' ? 'dark' : 'light'}`
   return { embed: lr.embed_url + q, open: lr.url }
 })
 
@@ -177,7 +181,7 @@ async function create() {
   working.value = true
   actionError.value = ''
   try {
-    info.value = await call('lumenpos.api.insights.ensure_dashboard', { lang: locale.value })
+    info.value = await call('lumenpos.api.insights.ensure_dashboard', { lang: reportsLang.value })
   } catch (e) {
     actionError.value = e.message || String(e)
   } finally {

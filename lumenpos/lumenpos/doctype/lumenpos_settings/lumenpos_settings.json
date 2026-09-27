@@ -107,7 +107,9 @@
   "layaway_days",
   "layaway_min_percent",
   "deposit_account",
-  "deposit_item"
+  "deposit_item",
+  "languages_section",
+  "till_languages"
  ],
  "fields": [
   {
@@ -784,12 +786,23 @@
    "fieldtype": "Link",
    "label": "Deposit item",
    "options": "Item"
+  },
+  {
+   "fieldname": "languages_section",
+   "fieldtype": "Section Break",
+   "label": "Languages"
+  },
+  {
+   "description": "The languages a cashier can pick at the till, one ERPNext language code per line (en, ar ...). Empty = every language LumenPOS ships, including ones a later update adds. English is always offered. Set from the till: Settings, General, Languages.",
+   "fieldname": "till_languages",
+   "fieldtype": "Small Text",
+   "label": "Languages at the till"
   }
  ],
  "index_web_pages_for_search": 0,
  "issingle": 1,
  "links": [],
- "modified": "2026-09-26 22:00:00.000000",
+ "modified": "2026-09-27 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "LumenPOS",
  "name": "LumenPOS Settings",

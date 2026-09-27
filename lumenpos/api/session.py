@@ -330,6 +330,7 @@ def _client_settings(profile_name=None):
 
     from frappe.utils import cint
 
+    from lumenpos import languages
     from lumenpos.api import approval_requests
 
     doc = frappe.get_cached_doc("LumenPOS Settings")
@@ -357,6 +358,8 @@ def _client_settings(profile_name=None):
         "enable_till_lock": 1 if doc.get("enable_till_lock") else 0,
         "auto_lock_minutes": cint(doc.get("auto_lock_minutes")) or 0,
         "enable_quick_keys": 1 if doc.get("enable_quick_keys") else 0,
+        # The languages the cashier may pick, [] = all (lumenpos.languages).
+        "till_languages": languages.offered(doc),
         "receipt_template": doc.get("receipt_template") or "Standard",
         "receipt_logo": doc.get("receipt_logo") or "",
         "receipt_header": doc.get("receipt_header") or "",

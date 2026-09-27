@@ -6,7 +6,7 @@ import { createPinia } from 'pinia'
 import { createRouter, createWebHashHistory } from 'vue-router'
 
 import './theme' // applies saved/OS theme before first paint
-import './i18n' // applies saved/browser language + RTL direction before first paint
+import { ready } from './i18n' // applies saved/browser language + RTL direction before first paint
 import App from './App.vue'
 import SellView from './views/SellView.vue'
 import HistoryView from './views/HistoryView.vue'
@@ -33,4 +33,6 @@ const router = createRouter({
   ],
 })
 
-createApp(App).use(createPinia()).use(router).mount('#app')
+// A language outside the main bundle is fetched first, so the first screen is
+// already in it (English and Arabic resolve at once).
+ready.finally(() => createApp(App).use(createPinia()).use(router).mount('#app'))

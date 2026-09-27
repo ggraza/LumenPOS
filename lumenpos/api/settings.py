@@ -14,7 +14,7 @@ from frappe.utils.password import get_decrypted_password
 from lumenpos import __version__
 from lumenpos import erpnext_compat
 from lumenpos.api import insights
-from lumenpos import cashback_rules, scope
+from lumenpos import cashback_rules, languages, scope
 
 def _can_manage():
     """Can the user change LumenPOS-wide settings (the General tab)?"""
@@ -110,6 +110,9 @@ def get_settings():
             {"item_code": r.item_code, "label": r.label or ""}
             for r in (doc.get("quick_keys") or [])
         ],
+        # [] = every language LumenPOS ships (lumenpos.languages).
+        "till_languages": languages.offered(doc),
+        "shipped_languages": languages.shipped(),
         "receipt_template": doc.get("receipt_template") or "Standard",
         "receipt_logo": doc.get("receipt_logo") or "",
         "receipt_header": doc.get("receipt_header") or "",
@@ -305,6 +308,9 @@ def save_settings(payload):
     doc.enable_till_lock = 1 if payload.get("enable_till_lock") else 0
     doc.auto_lock_minutes = cint(payload.get("auto_lock_minutes")) or 0
     doc.enable_quick_keys = 1 if payload.get("enable_quick_keys") else 0
+    # A screen from before 0.53.0 sends no languages: leave the choice alone.
+    if "till_languages" in payload:
+        doc.till_languages = languages.store(payload.get("till_languages"))
     doc.set("quick_keys", [])
     for row in payload.get("quick_keys") or []:
         code = (row.get("item_code") or "").strip()

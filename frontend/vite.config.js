@@ -15,7 +15,10 @@ export default defineConfig({
     rollupOptions: {
       output: {
         entryFileNames: 'pos.js',
-        chunkFileNames: 'chunk-[name].js',
+        // A language file (locales/<code>.js) is its own chunk. The hash gives
+        // it a new name whenever its text changes, so neither the browser's
+        // cache of /assets nor the service worker keeps an old translation.
+        chunkFileNames: 'chunk-[name]-[hash].js',
         assetFileNames: (assetInfo) =>
           assetInfo.name && assetInfo.name.endsWith('.css') ? 'pos.css' : 'asset-[name][extname]',
       },

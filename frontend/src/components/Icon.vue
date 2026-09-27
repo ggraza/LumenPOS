@@ -20,12 +20,15 @@ const STROKE = new Set([
   'close', 'shield', 'bulb', 'ticket', 'store', 'person', 'company', 'bank',
   'card', 'cash', 'hourglass', 'exchange', 'refresh', 'download', 'upload',
   'ban', 'barcode', 'gift', 'bike', 'plus', 'check', 'warning',
-  'search', 'tag', 'report', 'image', 'clock',
+  'search', 'tag', 'report', 'image', 'clock', 'globe',
 ])
 
 const PATHS = {
   close: '<path d="M6 6 18 18M18 6 6 18"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  globe:
+    '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/>' +
+    '<path d="M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/>',
   check: '<path d="M5 12l4.5 4.5L19 7"/>',
   warning: '<path d="M12 3 22 20H2z"/><path d="M12 10v4M12 17.5h.01"/>',
   bookmark:
