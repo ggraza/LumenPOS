@@ -223,6 +223,11 @@ def open_register(pos_profile, opening_float=0, resume_opening_entry=None, force
         # must NEVER block the store from opening the next shift, no matter the
         # closing_status (Pending / Queued / Failed). Open a fresh shift now; the
         # stuck close keeps retrying independently, so no invoice is lost.
+        # ERPNext 16 is the exception: it refuses every sale while the outlet
+        # still has the old shift's entry open, so that close is finished first.
+        if not lightweight and erpnext_compat.one_open_shift_per_outlet():
+            _assert_outlet_free(profile, closing_session=existing.name)
+            return _create_fresh_session(profile, opening_float, floats=floats)
         return _force_new_after_failure(profile, opening_float, existing.name, floats)
 
     # Lightweight Sales Invoice cash shift, just the float, no ERPNext POS
@@ -247,8 +252,70 @@ def open_register(pos_profile, opening_float=0, resume_opening_entry=None, force
 
     # 2) Nothing live on this register -> always a brand-new shift. Any stale
     # native "Open" POS Opening Entry left behind by a failed close or by the
-    # stock POS is ignored on purpose (see the docstring).
+    # stock POS is ignored on purpose (see the docstring), except on ERPNext
+    # 16, which refuses every sale of an outlet that has one (see
+    # _assert_outlet_free).
+    if erpnext_compat.one_open_shift_per_outlet():
+        _assert_outlet_free(profile)
     return _create_fresh_session(profile, opening_float, floats=floats)
+
+
+def _assert_outlet_free(profile, closing_session=None):
+    """ERPNext 16 only: before a new shift adds its POS Opening Entry, the
+    outlet must have none open, or ERPNext refuses every one of its sales
+    ("has multiple open POS Opening Entries"). A previous shift of ours still
+    closing is finished now when it can be (it normally finishes in the
+    background within seconds); whatever stays open is named, with what to do,
+    instead of opening a shift that cannot sell. Also refuses when ERPNext is
+    set to make Sales Invoices from the POS and this outlet makes POS Invoices."""
+    refused = erpnext_compat.pos_invoice_refused()
+    if refused and profile.get("lumenpos_invoice_mode") != "Sales Invoice":
+        frappe.throw(refused, title=_("Invoice type"))
+    if closing_session:
+        try:
+            build_closing_entry(closing_session)
+        except Exception:
+            frappe.log_error(title="LumenPOS: finishing a close before opening", message=frappe.get_traceback())
+    still_open = frappe.get_all(
+        "POS Opening Entry",
+        filters={"pos_profile": profile.name, "status": "Open", "docstatus": 1},
+        fields=["name", "user", "period_start_date"],
+        order_by="period_start_date asc",
+    )
+    if not still_open:
+        return
+    lines = []
+    for entry in still_open:
+        who = frappe.utils.get_fullname(entry.user) if entry.user else ""
+        since = frappe.utils.format_datetime(entry.period_start_date, "yyyy-MM-dd HH:mm")
+        ours = frappe.db.get_value(
+            "POS Register Session",
+            {"pos_opening_entry": entry.name},
+            ["name", "status", "closing_error"],
+            as_dict=True,
+        )
+        if ours and ours.status == "Closing":
+            lines.append(
+                _("Shift {0} is still being closed ({1}): retry its close from the Register screen.").format(
+                    ours.name, ours.closing_error or _("the close has not finished")
+                )
+            )
+        elif ours and ours.status == "Open":
+            lines.append(_("{0} has shift {1} open since {2}: close it first.").format(who, ours.name, since))
+        else:
+            lines.append(
+                _("POS Opening Entry {0} (by {1}, since {2}) is open outside LumenPOS: close or cancel it in ERPNext.").format(
+                    entry.name, who, since
+                )
+            )
+    frappe.throw(
+        _("ERPNext 16 lets an outlet sell with only one open shift, and {0} still has one:").format(profile.name)
+        + "<br>"
+        + "<br>".join(lines)
+        + "<br>"
+        + _("Several cashiers on one outlet each need their own POS Profile on ERPNext 16."),
+        title=_("Outlet already open"),
+    )
 
 
 def _create_fresh_session(profile, opening_float, bypass_live_guard=False, floats=None):
@@ -872,7 +939,7 @@ def _consolidate_now(closing):
     # Only feed invoices that aren't already consolidated, so a retry after a
     # partial/odd state can't double-post.
     pending = []
-    for row in closing.get("pos_transactions") or []:
+    for row in closing.get(erpnext_compat.closing_invoice_table()) or []:
         state = frappe.db.get_value(
             "POS Invoice", row.pos_invoice, ["status", "consolidated_invoice"], as_dict=True
         )
@@ -939,14 +1006,17 @@ def _make_closing_entry(session_doc, counted):
 
     grand_total = net_total = qty_total = 0.0
     si_rows = []
+    # ERPNext's table of the shift's POS Invoices (pos_transactions, renamed
+    # pos_invoices in v16).
+    invoice_table = erpnext_compat.closing_invoice_table()
     for inv in invoices:
-        # pos_transactions links POS Invoices only. A Sales-Invoice-mode shift
+        # That table links POS Invoices only. A Sales-Invoice-mode shift
         # leaves it empty (so _consolidate_now finds nothing to merge and just
         # finalizes), but its takings still roll into the payment reconciliation
         # and the Z-report totals below, the cash-control point of the entry.
         if sale_doctype == "POS Invoice":
             closing.append(
-                "pos_transactions",
+                invoice_table,
                 {
                     "pos_invoice": inv.name,
                     "customer": inv.customer,

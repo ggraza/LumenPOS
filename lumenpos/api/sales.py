@@ -735,6 +735,31 @@ def _lock_open_session(session_name):
         )
 
 
+def _assert_erpnext_accepts_sale(pos_profile, session):
+    """ERPNext 16's rules for every POS Invoice, said plainly before the sale
+    is built rather than as ERPNext's own error at the end: the site must make
+    POS Invoices from the POS (POS Settings), and the shift must have been
+    opened today (one open shift per outlet is kept by open_register)."""
+    from lumenpos import erpnext_compat
+
+    if frappe.db.get_value("POS Profile", pos_profile, "lumenpos_invoice_mode") == "Sales Invoice":
+        return
+    refused = erpnext_compat.pos_invoice_refused()
+    if refused:
+        frappe.throw(refused, title=_("Invoice type"))
+    if not erpnext_compat.one_open_shift_per_outlet() or not session.get("pos_opening_entry"):
+        return
+    started = frappe.db.get_value("POS Opening Entry", session["pos_opening_entry"], "period_start_date")
+    if started and frappe.utils.getdate(started) != frappe.utils.getdate(frappe.utils.today()):
+        frappe.throw(
+            _(
+                "This shift was opened on {0}. ERPNext 16 accepts sales only on a shift opened today: "
+                "close this shift on the Register screen and open a new one."
+            ).format(frappe.utils.formatdate(started)),
+            title=_("Shift from an earlier day"),
+        )
+
+
 def _open_session(pos_profile):
     """THE chokepoint for every sale, return and gift-card sale, so the
     shift-ownership rule is enforced here once, for all of them."""
@@ -743,6 +768,7 @@ def _open_session(pos_profile):
     session = get_open_session(pos_profile)
     if not session:
         frappe.throw(_("No open register session. Open the register first."))
+    _assert_erpnext_accepts_sale(pos_profile, session)
     # "Per cashier" scope: the takings land in the drawer of whoever OPENED the
     # shift, so only that cashier may ring one up. Deliberately no manager
     # bypass, selling is operational, not supervisory (supervision, i.e. cash

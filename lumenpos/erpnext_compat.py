@@ -16,6 +16,7 @@ version fallback if v16 ever relocates one of them.
 
 import frappe
 from frappe import _
+from frappe.utils import cint, flt
 
 
 def _fail(what, exc):
@@ -96,6 +97,107 @@ def merge_log_api():
     except Exception as exc:  # pragma: no cover - version guard
         _fail("POS invoice consolidation", exc)
     return create_merge_logs, get_invoice_customer_map
+
+
+def settle_points_outstanding(doc, method=None):
+    """POS Invoice before_submit (hooks.py), after ERPNext's own.
+
+    ERPNext 16 works out what a POS Invoice still owes as its total less
+    paid_amount (POSInvoice.set_outstanding_amount, new in 16), and paid_amount
+    is the payment rows alone (SalesInvoice.before_save). So a sale paid partly
+    with loyalty points posts "Partly Paid" with the points still owing, though
+    ERPNext's Sales Invoice counts points as paid (calculate_paid_amount) and so
+    does the invoice ERPNext merges the shift into: the books are right, only
+    the POS Invoice's own figure is not. For LumenPOS's own sales (they carry a
+    lumenpos_session), the points count here as they did up to ERPNext 15. The
+    sale is refused before this if points and payments do not cover it."""
+    if doc.get("is_return") or not doc.get("lumenpos_session"):
+        return
+    if not (doc.get("redeem_loyalty_points") and flt(doc.get("loyalty_amount"))):
+        return
+    total = flt(doc.get("rounded_total")) or flt(doc.get("grand_total"))
+    owed = flt(total - flt(doc.get("paid_amount")) - flt(doc.loyalty_amount), doc.precision("outstanding_amount"))
+    doc.outstanding_amount = owed if owed > 0 else 0
+
+
+def one_open_shift_per_outlet():
+    """ERPNext 16 checks, on every POS Invoice (sales and returns alike), that
+    its outlet has exactly one open POS Opening Entry and that it was opened
+    today (SalesInvoice.validate_pos_opening_entry, new in 16). Up to 15 an
+    outlet could hold several, and one could run past midnight."""
+    try:
+        from erpnext.accounts.doctype.sales_invoice.sales_invoice import SalesInvoice
+    except Exception:  # pragma: no cover - version guard
+        return False
+    return hasattr(SalesInvoice, "validate_pos_opening_entry")
+
+
+def pos_invoice_refused():
+    """The reason ERPNext refuses POS Invoices on this site, or None.
+
+    ERPNext 16 makes the POS create either Sales Invoices or POS Invoices for
+    the whole site (POS Settings, Invoice Type Created via POS Screen), and
+    refuses a POS Invoice when it is set to Sales Invoice. A site upgraded from
+    15 is set to POS Invoice by ERPNext's own patch; a NEW v16 site starts on
+    Sales Invoice."""
+    try:
+        if not frappe.get_meta("POS Settings").has_field("invoice_type"):
+            return None
+        kind = frappe.db.get_single_value("POS Settings", "invoice_type")
+    except Exception:
+        return None
+    if kind != "Sales Invoice":
+        return None
+    return _(
+        "ERPNext is set to make Sales Invoices from the POS (POS Settings, Invoice Type Created via "
+        "POS Screen), so it refuses the POS Invoices this outlet makes. Set it to POS Invoice, or set "
+        "the outlet to Sales Invoice (POS Profile, LumenPOS)."
+    )
+
+
+def change_gl_setting():
+    """The single doctype holding ERPNext's "Create Ledger Entries for Change
+    Amount" (post_change_gl_entries): POS Settings from ERPNext 16, Accounts
+    Settings before. None where a site has neither."""
+    for doctype in ("POS Settings", "Accounts Settings"):
+        try:
+            if frappe.get_meta(doctype).has_field("post_change_gl_entries"):
+                return doctype
+        except Exception:
+            continue
+    return None
+
+
+def change_gl_entries_on():
+    """True when ERPNext books change as its own ledger entry, out of the
+    change account. Off, it takes change off the payment made INTO that account
+    instead (SalesInvoice.make_pos_gl_entries), in local money only: it cannot
+    give change from one drawer for money paid into another, and it reduces
+    only the local value of a drawer in another currency."""
+    doctype = change_gl_setting()
+    if not doctype:
+        return True
+    return bool(cint(frappe.db.get_single_value(doctype, "post_change_gl_entries")))
+
+
+def ensure_change_gl_entries():
+    """Selling in other currencies needs change booked as its own entry (see
+    change_gl_entries_on). On by default up to ERPNext 15; a NEW ERPNext 16
+    site starts with it off (a site upgraded from 15 keeps its value). Turns it
+    on; True when it changed."""
+    doctype = change_gl_setting()
+    if not doctype or change_gl_entries_on():
+        return False
+    frappe.db.set_single_value(doctype, "post_change_gl_entries", 1)
+    return True
+
+
+def closing_invoice_table():
+    """The POS Closing Entry table that lists the shift's POS Invoices:
+    `pos_transactions` up to ERPNext 15, renamed `pos_invoices` in ERPNext 16
+    (which also added `sales_invoices` beside it). Consolidation reads it."""
+    meta = frappe.get_meta("POS Closing Entry")
+    return "pos_invoices" if meta.has_field("pos_invoices") else "pos_transactions"
 
 
 def make_return_doc(doctype, name):

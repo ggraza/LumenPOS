@@ -384,6 +384,23 @@ def check_change(invoice):
         return
     account_currency = frappe.get_cached_value("Account", account, "account_currency")
     ccy = company_currency(invoice.company)
+    from lumenpos import erpnext_compat
+
+    if not erpnext_compat.change_gl_entries_on():
+        # ERPNext then takes change off the payment made into the change
+        # account, in local money only: anything else would leave the change
+        # out of the books.
+        paid_into = {row.account for row in invoice.get("payments") or [] if flt(row.amount)}
+        if account not in paid_into or account_currency != ccy:
+            frappe.throw(
+                _(
+                    "ERPNext is set not to record change as its own ledger entry (Create Ledger Entries for "
+                    "Change Amount, in POS Settings on ERPNext 16 and Accounts Settings before), so change can "
+                    "only come back in local money from the drawer the customer paid into. Turn that on, or take "
+                    "the exact amount."
+                ),
+                title=_("Change"),
+            )
     if account_currency in (ccy, invoice.currency):
         return
     frappe.throw(
@@ -621,6 +638,11 @@ def ensure_setup():
     Returns {currency: reason} for the ones that failed."""
     if not enabled():
         return {}
+    # Change from one drawer for money paid into another, and change from a
+    # drawer in another currency, need change booked as its own ledger entry.
+    from lumenpos import erpnext_compat
+
+    erpnext_compat.ensure_change_gl_entries()
     doc = frappe.get_single(SETTINGS)
     changed = False
     failed = {}

@@ -508,7 +508,8 @@ const settings = {
   "A shift belongs to": "الوردية تخص",
   "The outlet, one shift per register, any cashier sells on it": "الفرع، وردية واحدة لكل صندوق، ويبيع عليها أي كاشير",
   "The cashier, each opens their own shift and sells only on it": "الكاشير، كل واحد يفتح ورديته ويبيع عليها وحده",
-  "Per cashier lets several people share one counter, each with their own drawer and Z-report.": "خيار الكاشير يتيح لعدة أشخاص مشاركة منضدة واحدة، لكل منهم درجه وتقرير Z الخاص به.",
+  "Per cashier lets several people share one counter, each with their own drawer and Z-report. On ERPNext 16 an outlet sells with only one open shift, so there each cashier needs their own POS Profile.":
+    "خيار الكاشير يتيح لعدة أشخاص مشاركة منضدة واحدة، لكل منهم درجه وتقرير Z الخاص به. في ERPNext 16 يبيع الفرع بوردية مفتوحة واحدة فقط، فيحتاج كل كاشير هناك ملف نقطة بيع خاص به.",
   "Email an alert on a large closing variance": "أرسل تنبيها بالبريد عند فرق إغلاق كبير",
   "Records and notifies, it never blocks the close.": "يسجل وينبه فقط، ولا يمنع الإغلاق أبدا.",
   "Email an alert when a shift is left open": "أرسل تنبيها بالبريد عند ترك وردية مفتوحة",

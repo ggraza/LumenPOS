@@ -56,7 +56,11 @@ scheduler_events = {
 # runtime. It returns at once unless a demo run has set
 # frappe.flags.lumenpos_demo_stamp, so a real sale is never touched.
 doc_events = {
-    "POS Invoice": {"before_insert": "lumenpos.demo_data.apply_demo_stamp"},
+    "POS Invoice": {
+        "before_insert": "lumenpos.demo_data.apply_demo_stamp",
+        # ERPNext 16 leaves loyalty points owing on a POS Invoice (see there).
+        "before_submit": "lumenpos.erpnext_compat.settle_points_outstanding",
+    },
     "Sales Invoice": {"before_insert": "lumenpos.demo_data.apply_demo_stamp"},
     "Stock Entry": {"before_insert": "lumenpos.demo_data.apply_demo_stamp"},
     "POS Opening Entry": {"before_insert": "lumenpos.demo_data.apply_demo_stamp"},
