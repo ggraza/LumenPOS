@@ -1363,4 +1363,11 @@ export default {
   "Hide details": "Ocultar detalles",
   "Saved {amount}": "Ahorro {amount}",
   "Discount {pct}%": "Descuento {pct}%",
+  "You still have {n} other registers open:": "Aún tiene {n} cajas más abiertas:",
+  "Remember to close each one when its shift ends.": "Recuerde cerrar cada una cuando termine su turno.",
+  "Close your open shift first": "Primero cierre su turno abierto",
+  "This shop allows one open shift per person at a time. Close it, then open this one.": "Esta tienda permite un solo turno abierto por persona a la vez. Ciérrelo y luego abra este.",
+  "Go to its Register page": "Ir a su página de Caja",
+  "One open shift per person": "Un turno abierto por persona",
+  "On: nobody opens a new shift while they still have one open at another outlet, they close it first. Off (the default): a person may hold shifts at several outlets at once, and the till only reminds them.": "Activado: nadie abre un turno nuevo mientras aún tenga uno abierto en otra sucursal, primero lo cierra. Desactivado (predeterminado): una persona puede tener turnos en varias sucursales a la vez y la caja solo se lo recuerda.",
 }

@@ -1363,4 +1363,11 @@ export default {
   "Hide details": "Ẩn chi tiết",
   "Saved {amount}": "Tiết kiệm {amount}",
   "Discount {pct}%": "Giảm giá {pct}%",
+  "You still have {n} other registers open:": "Bạn vẫn còn {n} quầy thu ngân khác đang mở:",
+  "Remember to close each one when its shift ends.": "Nhớ đóng từng quầy khi hết ca.",
+  "Close your open shift first": "Hãy đóng ca đang mở của bạn trước",
+  "This shop allows one open shift per person at a time. Close it, then open this one.": "Cửa hàng này chỉ cho phép mỗi người một ca đang mở tại một thời điểm. Hãy đóng ca đó rồi mở ca này.",
+  "Go to its Register page": "Đến trang Quầy thu ngân của ca đó",
+  "One open shift per person": "Mỗi người một ca đang mở",
+  "On: nobody opens a new shift while they still have one open at another outlet, they close it first. Off (the default): a person may hold shifts at several outlets at once, and the till only reminds them.": "Bật: không ai mở ca mới khi vẫn còn một ca đang mở ở cửa hàng khác, phải đóng ca đó trước. Tắt (mặc định): một người có thể giữ ca ở nhiều cửa hàng cùng lúc, và quầy chỉ nhắc nhở.",
 }

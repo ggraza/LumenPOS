@@ -1363,4 +1363,11 @@ export default {
   "Hide details": "ซ่อนรายละเอียด",
   "Saved {amount}": "ประหยัด {amount}",
   "Discount {pct}%": "ส่วนลด {pct}%",
+  "You still have {n} other registers open:": "คุณยังมีเครื่องคิดเงินอื่นเปิดอยู่อีก {n} เครื่อง:",
+  "Remember to close each one when its shift ends.": "อย่าลืมปิดแต่ละเครื่องเมื่อจบกะ",
+  "Close your open shift first": "ปิดกะที่เปิดอยู่ของคุณก่อน",
+  "This shop allows one open shift per person at a time. Close it, then open this one.": "ร้านนี้อนุญาตให้แต่ละคนเปิดกะได้ครั้งละหนึ่งกะเท่านั้น ปิดกะนั้นก่อน แล้วจึงเปิดกะนี้",
+  "Go to its Register page": "ไปที่หน้าเครื่องคิดเงินของกะนั้น",
+  "One open shift per person": "หนึ่งคนเปิดได้หนึ่งกะ",
+  "On: nobody opens a new shift while they still have one open at another outlet, they close it first. Off (the default): a person may hold shifts at several outlets at once, and the till only reminds them.": "เปิด: ไม่มีใครเปิดกะใหม่ได้ขณะที่ยังมีกะเปิดอยู่ที่สาขาอื่น ต้องปิดกะนั้นก่อน ปิด (ค่าเริ่มต้น): หนึ่งคนถือกะได้หลายสาขาพร้อมกัน และเครื่องคิดเงินจะแค่เตือน",
 }

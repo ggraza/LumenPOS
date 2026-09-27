@@ -832,7 +832,7 @@ const features = {
   "{outlet} now uses the default receipt": "{outlet} يستخدم الآن الإيصال الافتراضي",
   "Outlet": "الفرع",
   "Enter the opening cash float to start selling.": "أدخل الرصيد النقدي الافتتاحي لبدء البيع.",
-  "You still have another register open:": "لا يزال لديك سجل نقدي آخر مفتوح:",
+  "You still have another register open:": "لا يزال لديك صندوق آخر مفتوح:",
   "Remember to close it when its shift ends.": "تذكر إغلاقه عند انتهاء ورديته.",
   "or open a new shift now": "أو افتح وردية جديدة الآن",
   "Open a new shift": "فتح وردية جديدة",
@@ -1562,6 +1562,14 @@ const prefixedEn = {
   'lang:vi': 'Vietnamese',
 }
 const prefixedAr = {
+  // One open shift per person (0.53.0).
+  "You still have {n} other registers open:": "لا يزال لديك صناديق أخرى مفتوحة ({n}):",
+  "Remember to close each one when its shift ends.": "تذكر إغلاق كل منها عند انتهاء ورديته.",
+  "Close your open shift first": "أغلق ورديتك المفتوحة أولا",
+  "This shop allows one open shift per person at a time. Close it, then open this one.": "يسمح هذا المتجر بوردية مفتوحة واحدة لكل شخص في الوقت نفسه. أغلقها ثم افتح هذه.",
+  "Go to its Register page": "اذهب إلى صفحة صندوقها",
+  "One open shift per person": "وردية مفتوحة واحدة لكل شخص",
+  "On: nobody opens a new shift while they still have one open at another outlet, they close it first. Off (the default): a person may hold shifts at several outlets at once, and the till only reminds them.": "تشغيل: لا يفتح أحد وردية جديدة وما زالت لديه وردية مفتوحة في فرع آخر، بل يغلقها أولا. إيقاف (الافتراضي): يمكن للشخص أن يحتفظ بورديات في عدة فروع في وقت واحد، ويكتفي الصندوق بتذكيره.",
   // The cart footer (0.53.0): details fold away, coupon / discount / note open on demand.
   "Details": "التفاصيل",
   "Hide details": "إخفاء التفاصيل",

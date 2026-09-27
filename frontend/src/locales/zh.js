@@ -1363,4 +1363,11 @@ export default {
   "Hide details": "收起明细",
   "Saved {amount}": "已省 {amount}",
   "Discount {pct}%": "折扣 {pct}%",
+  "You still have {n} other registers open:": "您还有 {n} 台其他收银台处于开启状态：",
+  "Remember to close each one when its shift ends.": "请记得在各自班次结束时将其关闭。",
+  "Close your open shift first": "请先关闭您已开启的班次",
+  "This shop allows one open shift per person at a time. Close it, then open this one.": "本店每人同一时间只允许一个开启的班次。请先关闭它，再开启这个。",
+  "Go to its Register page": "前往其收银台页面",
+  "One open shift per person": "每人仅一个开启的班次",
+  "On: nobody opens a new shift while they still have one open at another outlet, they close it first. Off (the default): a person may hold shifts at several outlets at once, and the till only reminds them.": "开启：在其他门店仍有开启的班次时，任何人都不能开新班次，需先关闭。关闭（默认）：一个人可同时在多个门店持有班次，收银台只会提醒。",
 }

@@ -83,6 +83,7 @@ def get_settings():
         "protected_price_lists": sorted(_protected_price_lists()),
         "offline_stock_only": doc.get("offline_stock_only") or 0,
         "shift_scope": doc.get("shift_scope") or "Per outlet",
+        "one_shift_per_user": 1 if doc.get("one_shift_per_user") else 0,
         "variance_alert_enabled": 1 if doc.get("variance_alert_enabled") else 0,
         "variance_alert_threshold": flt(doc.get("variance_alert_threshold")),
         "variance_alert_role": doc.get("variance_alert_role") or "",
@@ -285,6 +286,7 @@ def save_settings(payload):
     doc = frappe.get_doc("LumenPOS Settings")
     doc.offline_stock_only = 1 if payload.get("offline_stock_only") else 0
     doc.shift_scope = payload.get("shift_scope") or "Per outlet"
+    doc.one_shift_per_user = 1 if payload.get("one_shift_per_user") else 0
     doc.variance_alert_enabled = 1 if payload.get("variance_alert_enabled") else 0
     doc.variance_alert_threshold = flt(payload.get("variance_alert_threshold"))
     doc.variance_alert_role = payload.get("variance_alert_role") or None

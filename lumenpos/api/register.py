@@ -162,6 +162,25 @@ def _assert_owner_or_manager(session_doc):
 # Opening
 # ---------------------------------------------------------------------------
 
+def _assert_no_other_open_shift(pos_profile):
+    """LumenPOS Settings.one_shift_per_user on: refuse a new shift while this
+    user still has one Open at another outlet, naming it. Off (the default), a
+    person may hold shifts at several outlets at once (a manager covering
+    branches) and the Open Register dialog only reminds them."""
+    if not cint(frappe.db.get_single_value("LumenPOS Settings", "one_shift_per_user") or 0):
+        return
+    from lumenpos.api.session import _other_open_registers
+
+    others = _other_open_registers(pos_profile)
+    if others:
+        frappe.throw(
+            _("Close your open shift first: {0}. This shop allows one open shift per person at a time.").format(
+                ", ".join("{0} ({1})".format(r["pos_profile"], r["session"]) for r in others)
+            ),
+            title=_("Shift already open"),
+        )
+
+
 @frappe.whitelist()
 def open_register(pos_profile, opening_float=0, resume_opening_entry=None, force_new=0, floats=None):
     """Opening is ALWAYS a fresh shift. A shift can never be resumed.
@@ -198,6 +217,10 @@ def open_register(pos_profile, opening_float=0, resume_opening_entry=None, force
 
     if not permissions.can_open_register():
         frappe.throw(_("You are not allowed to open a register"), frappe.PermissionError)
+    # 0) A shop may hold every person to one open shift at a time (Settings,
+    # General, Register and shifts): one still open at another outlet is
+    # closed first.
+    _assert_no_other_open_shift(profile.name)
 
     # 1) This register must have no live shift (Open or still-finalising Closing).
     # In "Per cashier" scope the shift belongs to the individual, so the check is

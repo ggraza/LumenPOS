@@ -1363,4 +1363,11 @@ export default {
   "Hide details": "Sembunyikan rincian",
   "Saved {amount}": "Hemat {amount}",
   "Discount {pct}%": "Diskon {pct}%",
+  "You still have {n} other registers open:": "Anda masih punya {n} kasir lain yang terbuka:",
+  "Remember to close each one when its shift ends.": "Jangan lupa menutup masing-masing saat shift-nya berakhir.",
+  "Close your open shift first": "Tutup dulu shift Anda yang masih terbuka",
+  "This shop allows one open shift per person at a time. Close it, then open this one.": "Toko ini hanya mengizinkan satu shift terbuka per orang dalam satu waktu. Tutup shift itu, lalu buka yang ini.",
+  "Go to its Register page": "Buka halaman Kasir-nya",
+  "One open shift per person": "Satu shift terbuka per orang",
+  "On: nobody opens a new shift while they still have one open at another outlet, they close it first. Off (the default): a person may hold shifts at several outlets at once, and the till only reminds them.": "Aktif: tidak ada yang bisa membuka shift baru selama masih punya shift terbuka di gerai lain, shift itu ditutup dulu. Nonaktif (bawaan): satu orang boleh memegang shift di beberapa gerai sekaligus, dan kasir hanya mengingatkan.",
 }

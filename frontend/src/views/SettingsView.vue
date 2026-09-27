@@ -1355,6 +1355,13 @@
             <span class="setting-desc">{{ t('Per cashier lets several people share one counter, each with their own drawer and Z-report. On ERPNext 16 an outlet sells with only one open shift, so there each cashier needs their own POS Profile.') }}</span>
           </label>
           <label class="setting-row">
+            <input type="checkbox" class="setting-toggle" v-model="generalForm.one_shift_per_user" :true-value="1" :false-value="0" />
+            <span class="setting-text">
+              <span class="setting-title">{{ t('One open shift per person') }}</span>
+              <span class="setting-desc">{{ t('On: nobody opens a new shift while they still have one open at another outlet, they close it first. Off (the default): a person may hold shifts at several outlets at once, and the till only reminds them.') }}</span>
+            </span>
+          </label>
+          <label class="setting-row">
             <input type="checkbox" class="setting-toggle" v-model="generalForm.variance_alert_enabled" :true-value="1" :false-value="0" />
             <span class="setting-text">
               <span class="setting-title">{{ t('Email an alert on a large closing variance') }}</span>
@@ -2331,6 +2338,7 @@ const generalForm = ref({
   return_window_days: 14,
   offline_stock_only: 0,
   shift_scope: 'Per outlet',
+  one_shift_per_user: 0,
   variance_alert_enabled: 0,
   variance_alert_threshold: 0,
   variance_alert_role: '',
@@ -2916,6 +2924,7 @@ async function load() {
     return_window_days: info.return_window_days ?? 14,
     offline_stock_only: info.offline_stock_only || 0,
     shift_scope: info.shift_scope || 'Per outlet',
+    one_shift_per_user: info.one_shift_per_user ? 1 : 0,
     variance_alert_enabled: info.variance_alert_enabled || 0,
     variance_alert_threshold: info.variance_alert_threshold || 0,
     variance_alert_role: info.variance_alert_role || '',

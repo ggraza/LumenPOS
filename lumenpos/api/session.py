@@ -344,6 +344,7 @@ def _client_settings(profile_name=None):
         "show_out_of_stock": 1 if doc.get("show_out_of_stock") else 0,
         "serial_scan_only": 1 if doc.get("serial_scan_only") else 0,
         "shift_scope": doc.get("shift_scope") or "Per outlet",
+        "one_shift_per_user": 1 if doc.get("one_shift_per_user") else 0,
         "enable_order_discount": 1 if doc.get("enable_order_discount") else 0,
         "enable_service_charge": 1 if doc.get("enable_service_charge") else 0,
         "service_charge_percent": flt(doc.get("service_charge_percent")),

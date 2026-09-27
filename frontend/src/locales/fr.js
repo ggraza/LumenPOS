@@ -1363,4 +1363,11 @@ export default {
   "Hide details": "Masquer les détails",
   "Saved {amount}": "Économie {amount}",
   "Discount {pct}%": "Remise {pct} %",
+  "You still have {n} other registers open:": "Vous avez encore {n} autres caisses ouvertes :",
+  "Remember to close each one when its shift ends.": "Pensez à fermer chacune à la fin de sa session.",
+  "Close your open shift first": "Fermez d'abord votre session ouverte",
+  "This shop allows one open shift per person at a time. Close it, then open this one.": "Ce magasin n'autorise qu'une session ouverte par personne à la fois. Fermez-la, puis ouvrez celle-ci.",
+  "Go to its Register page": "Aller à sa page Caisse",
+  "One open shift per person": "Une session ouverte par personne",
+  "On: nobody opens a new shift while they still have one open at another outlet, they close it first. Off (the default): a person may hold shifts at several outlets at once, and the till only reminds them.": "Activé : personne n'ouvre une nouvelle session tant qu'il en a encore une ouverte dans un autre magasin, il la ferme d'abord. Désactivé (par défaut) : une personne peut avoir des sessions dans plusieurs magasins à la fois, et la caisse le lui rappelle seulement.",
 }

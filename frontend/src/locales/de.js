@@ -1363,4 +1363,11 @@ export default {
   "Hide details": "Details ausblenden",
   "Saved {amount}": "Gespart {amount}",
   "Discount {pct}%": "Rabatt {pct}%",
+  "You still have {n} other registers open:": "Sie haben noch {n} weitere Kassen offen:",
+  "Remember to close each one when its shift ends.": "Denken Sie daran, jede am Ende ihrer Schicht zu schließen.",
+  "Close your open shift first": "Schließen Sie zuerst Ihre offene Schicht",
+  "This shop allows one open shift per person at a time. Close it, then open this one.": "In diesem Geschäft ist pro Person nur eine offene Schicht gleichzeitig erlaubt. Schließen Sie diese und öffnen Sie dann die neue.",
+  "Go to its Register page": "Zur Kassenseite",
+  "One open shift per person": "Eine offene Schicht pro Person",
+  "On: nobody opens a new shift while they still have one open at another outlet, they close it first. Off (the default): a person may hold shifts at several outlets at once, and the till only reminds them.": "Ein: Niemand öffnet eine neue Schicht, solange er noch eine in einer anderen Filiale offen hat, er schließt sie zuerst. Aus (Standard): Eine Person kann Schichten in mehreren Filialen gleichzeitig haben, und die Kasse erinnert sie nur daran.",
 }
